@@ -5,7 +5,7 @@
   <a align="center">
     <img src="https://github.com/criogenox/E-Symbolic-Railway-Dynamics-Formulation/assets/53323058/69c4827e-2319-4b96-9daf-5d5687b504ab.png" alt="Logo" width="700">
   </a>
-  <h3 align="center">Simply data focusing </h3>
+  <h3 align="center">Simply focused on data</h3>
   <p align="center">
     All-in-one zoom and tracking capabilities for Qt charts series 
   </p>
