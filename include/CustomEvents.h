@@ -30,7 +30,6 @@ public:
 signals:
     void mouseMoved(QPointF mousePos,
                     QMouseEvent *event,
-                    QPointF chartPos,
                     QVector<qreal> &limits);
 
 protected:
@@ -85,7 +84,6 @@ private slots:
 
     void onMouseMoved(QPointF mousePos,
                       const QMouseEvent *event,
-                      QPointF chartPos,
                       QVector<qreal> &limits);
 
 private:

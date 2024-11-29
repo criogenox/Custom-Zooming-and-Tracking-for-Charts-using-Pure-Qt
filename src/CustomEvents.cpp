@@ -247,10 +247,9 @@ void ZoomAndScroll::mouseMoveEvent(QMouseEvent *event) {
     lastMousePos = event->pos(); // Update last mouse position
 
     const QPointF mousePos = mapToScene(event->pos());
-    const QPointF chartPos = chart()->mapToValue(mousePos);
     // Mouse position as emitted signal
     QVector<qreal> limits{xMin, xMax, yMin, yMax};
-    emit mouseMoved(mousePos, event, chartPos, limits);
+    emit mouseMoved(mousePos, event,limits);
 }
 
 TrackingSeries::TrackingSeries(ZoomAndScroll *chartView, QObject *parent)
@@ -277,14 +276,16 @@ void TrackingSeries::hideTooltip() {
 
 void TrackingSeries::deleteTooltip() {
     if (!toolTips.isEmpty()) {
-        qDeleteAll(toolTips); // Delete all tooltips
+        qDeleteAll(toolTips); // Delete all
         toolTips.clear(); // Clear the list
+        qDeleteAll(shadowEffect);
+        shadowEffect.clear();
     }
 }
 
 TrackingSeries::~TrackingSeries() {
     hideTooltip(); // Hide tooltips before destruction
-    deleteTooltip(); // Clean up tooltips
+    deleteTooltip(); // Clean up tooltips and their shadow effects
     qDeleteAll(lines); // Delete track-lines
     lines.clear(); // Clear the list
     if (bullet) {
@@ -295,8 +296,8 @@ TrackingSeries::~TrackingSeries() {
 
 void TrackingSeries::onMouseMoved(const QPointF mousePos,
                                   const QMouseEvent *event,
-                                  const QPointF chartPos,
                                   QVector<qreal> &limits) {
+    const QPointF chartPos = m_chartView->chart()->mapToValue(mousePos);
     // Visibility checking condition
     const bool isVisible = chartPos.x() >= limits[0] && chartPos.x() <= limits[1]
                            && chartPos.y() >= limits[2] && chartPos.y() <= limits[3];
@@ -315,7 +316,7 @@ void TrackingSeries::onMouseMoved(const QPointF mousePos,
 // Labeling by mouse hovering
 void TrackingSeries::handleTooltipOnFocus(const QPointF &chartPos, const QMouseEvent *event) {
     QList<Intercerp> intersectionVector = findIntersection(chartPos);
-    // Tooltip is displayed only if it is within a threshold distance
+    // The Tooltip is displayed only if it is within a threshold distance
     if (intersectionVector[0].distance < 0.5) {
         if (!intersectionVector[0].pos.isNull()) {
             const QString tooltipText = QString("X: %1, Y: %2")
