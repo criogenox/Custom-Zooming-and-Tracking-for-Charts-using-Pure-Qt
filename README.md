@@ -21,22 +21,22 @@
 `Key Features:`
 
 - Complete chart zooming and scrolling capabilities. 
-- Individual series label-tracking funtionalities.
-
+- Label-tracking functionalities for individual series.
+  
    </p>
        <p align="right">
     :muscle: don't let anyone get you down :muscle:
   </p> 
    <div>
    
-## Overview and details
+## Background & Details
 
 ### Custom zoom class
 
 <div align="justify">
   <p>
 
-> Zooming and scrolling triggered by mouse wheel movements, press/release mouse events and keyboard toggle actions, allowing an improved data visualization and analysis in large datasets, and providing a more intuitive user experience.
+> Zooming and scrolling triggered by mouse wheel movements, press/release mouse events and keyboard toggle actions, allowing an improved data visualization and analysis of large datasets, and providing a more intuitive user experience.
 
 **Implementation:**
 
@@ -44,11 +44,11 @@ Features implemented by overridden event handlers for mouse and keyboard inputs 
 
 `Functionalities:`
 
-- Handles mouse press events to dragging and panning (warning, inverted mouse buttons).
-- Support for horizontal panning by x-axis range adjustment (axis clipping)
 - Wheel zoom focusing on cursor position, enhancing data's on focus experience.
+- Support for horizontal panning by x-axis range adjustment (axis clipping)
+- Handles double-click events to fit the chart within the view, according to the original axes range.
 - Zoom-in by drag/selection rubber band area.
-- Handles double-click events to fit the chart within the view, according the origianl axes range.
+- Handles mouse press events to dragging and panning (warning, inverted mouse buttons).
 - Restricted zoom limits/range preventing excessive zooming far beyond the available data range.
  
   </p>
@@ -61,13 +61,13 @@ Features implemented by overridden event handlers for mouse and keyboard inputs 
 <div align="justify">
   <p>
 
-> Two label-tracking functionalities for enhancing the interactivity of the chart by dynamic custom tooltips (labels) creation, displaying relevant data information as points are hovered or intersected by a track line. It improves data comprehension by visually associating, reducing extra needs for navigating or streamlining the data exploration process.
+> Two label-tracking functionalities for enhancing the interactivity of the chart by dynamic custom tooltips (labels) creation, displaying relevant data information as points are hovered or intersected by a track line. It improves data comprehension by visual associating, reducing extra needs for navigating or streamlining the data exploration process.
 
 **Implementation:**
 
 - Custom tooltips are created as QLabel widgets and are dynamically positioned based on the mouse cursor's vertical coordinate.
 
-- The mouse movement events are captured by signal/slot mechanism updating the tooltip content and position it accordingly.
+- The mouse movement events are captured by signal/slot mechanism, updating the tooltip content and positioning it accordingly.
 
 - Label displaying duration is controlled by a timer signal/slot mechanism and tooltip visibility is managed through a proper logic flow, preventing overlapping effects and over cluttering the interface.
 
@@ -81,7 +81,7 @@ Features implemented by overridden event handlers for mouse and keyboard inputs 
 
 - Support for QLinesSeries, QSplineSeries, and QScatterSeries.
 
-- Handles crosshair (continuous lines) and truncated track lines (visually highlighting the interception effect).
+- Handles crosshair (continuous lines) and truncated track lines (visually emphasizing the intersection effect).
 
    </p>
    <div>
