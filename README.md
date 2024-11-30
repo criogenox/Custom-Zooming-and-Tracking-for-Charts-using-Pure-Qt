@@ -79,7 +79,7 @@ Features implemented by overridden event handlers for mouse and keyboard inputs 
 
 - Support for data and axes labels, and cursor tooltip.
 
-- Support for QLinesSeries, QSplineSeries, and QScatterSeries.
+- Support for QLinesSeries & QSplineSeries.
 
 - Handles crosshair (continuous lines) and truncated track lines (visually emphasizing the intersection effect).
 
