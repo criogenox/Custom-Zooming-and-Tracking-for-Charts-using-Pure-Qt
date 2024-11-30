@@ -3,7 +3,7 @@
 <!-- PROJECT LOGO -->
 <div align="center">
   <a align="center">
-    <img src="https://github.com/criogenox/All-in-one-Zoom-and-Tracking-for-Qt-Charts/assets/53323058/abbacd5d-0411-4a9a-8d4f-3605097c13bd.png" alt="Logo" width="700">
+    <img src="https://github.com/criogenox/All-in-one-Zoom-and-Tracking-for-Qt-Charts/assets/53323058/abbacd5d-0411-4a9a-8d4f-3605097c13bd.png" alt="Logo" width="500">
   </a>
   <h3 align="center">Simply focused on data</h3>
   <p align="center">
