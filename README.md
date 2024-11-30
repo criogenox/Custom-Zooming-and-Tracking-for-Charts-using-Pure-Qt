@@ -5,7 +5,7 @@
   <a align="center">
     <img src="https://github.com/criogenox/All-in-one-Zoom-and-Tracking-for-Qt-Charts/assets/53323058/abbacd5d-0411-4a9a-8d4f-3605097c13bd.png" alt="Logo" width="500">
   </a>
-  <h3 align="center">Simply focused on data</h3>
+  <h3 align="center">Simply focusing on data</h3>
   <p align="center">
     All-in-one zoom and tracking capabilities for Qt charts series 
   </p>
