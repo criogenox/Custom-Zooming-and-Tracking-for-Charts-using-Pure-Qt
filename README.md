@@ -102,7 +102,7 @@ Features implemented by overridden event handlers for mouse and keyboard inputs 
 - For a more in-depth understanding of the implemented method, as many comments as possible have been included.
 
 </div>
-7c5c897f-1410-4d45-acf3-f3a42ff65564
+
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 ##  General view sample
