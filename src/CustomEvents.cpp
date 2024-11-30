@@ -42,7 +42,7 @@ void ZoomAndScroll::resetChartToOriginal() const {
     if (yAxis) {
         yAxis->setRange(ChartUtils::minY, ChartUtils::maxY);
     }
-    chart()->update(); //  Chart view refreshing
+    chart()->update(); // Chart view refreshing
 }
 
 void ZoomAndScroll::keyPressEvent(QKeyEvent *event) {
@@ -51,7 +51,7 @@ void ZoomAndScroll::keyPressEvent(QKeyEvent *event) {
         toggleState = !toggleState; // Track-line labeling
     }
     if (event->key() == Qt::Key_U) {
-        toggleLines = !toggleLines; //  Crosshair | truncated track-lines
+        toggleLines = !toggleLines; // Crosshair | truncated track-lines
     }
     if (event->key() == Qt::Key_Y) {
         if (QToolTip::isVisible()) {
@@ -249,7 +249,7 @@ void ZoomAndScroll::mouseMoveEvent(QMouseEvent *event) {
     const QPointF mousePos = mapToScene(event->pos());
     // Mouse position as emitted signal
     QVector<qreal> limits{xMin, xMax, yMin, yMax};
-    emit mouseMoved(mousePos, event,limits);
+    emit mouseMoved(mousePos, event, limits);
 }
 
 TrackingSeries::TrackingSeries(ZoomAndScroll *chartView, QObject *parent)
@@ -277,8 +277,8 @@ void TrackingSeries::hideTooltip() {
 void TrackingSeries::deleteTooltip() {
     if (!toolTips.isEmpty()) {
         qDeleteAll(toolTips); // Delete all
-        toolTips.clear(); // Clear the list
         qDeleteAll(shadowEffect);
+        toolTips.clear(); // Clear the list
         shadowEffect.clear();
     }
 }
@@ -441,8 +441,8 @@ void TrackingSeries::handleTooltipForTracking(
     const QPointF IPpixel = chart()->mapToPosition(intersectionPoint);
     if (!intersectionPoint.isNull() && intersectionPoint.y() <= limits[3] &&
         intersectionPoint.y() >= limits[2]) {
-        updateVerticalLine(mousePos, IPpixel, limits);
-        setTooltips(intersectionPoint, IPpixel);
+        updateVerticalLine(mousePos, IPpixel, limits); // Draw tracking lines
+        setTooltips(intersectionPoint, IPpixel); // Creates the labels
         drawBullet(intersectionPoint); // Draw the bullet at the intersection
     } else {
         hideAll();
@@ -547,7 +547,7 @@ void TrackingSeries::createTooltips(const QList<TooltipData> &tooltipDataList) {
     }
 
     // Start or restart the custom tooltip (label) timer
-    tooltipTimer->start(1000); // Hide all after 1 second (ms)
+    tooltipTimer->start(1000); // Hide all after 1 second (1000 ms)
 }
 
 void TrackingSeries::setTooltips(const QPointF &intersectionPoint, const QPointF &IPpixel) {
