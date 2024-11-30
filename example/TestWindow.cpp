@@ -13,24 +13,31 @@ TestWindow::TestWindow(QWidget *parent)
     auto *chartView = new ZoomAndScroll(chart);
     auto *series1 = new TrackingSeries(chartView);
     auto *series2 = new TrackingSeries(chartView);
+    auto *series3 = new TrackingSeries(chartView);
     //*******************************************
 
     //  Series of random data
     for (int i = 0; i < 200; ++i) {
-        qreal yValue = rand() % 7;
+        qreal yValue = rand() % 6;
         qreal j = 2 * i;
         qreal _yValue = 0.9 * yValue;
         series1->append(j, _yValue);
     }
     for (int i = 0; i < 200; ++i) {
-        qreal yValue = rand() % 5 + 15;
+        qreal yValue = rand() % 4 + 15;
         qreal j = 2 * i;
         qreal _yValue = 0.7 * yValue;
         series2->append(j, _yValue);
     }
-
+    for (int i = 0; i < 200; ++i) {
+        qreal yValue = rand() % 8 + 30;
+        qreal j = 2 * i;
+        qreal _yValue = 0.7 * yValue;
+        series3->append(j, _yValue);
+    }
     chart->addSeries(series1);
     chart->addSeries(series2);
+    chart->addSeries(series3);
     // Setting global chart limits
     ChartUtils::updateXLimits(chart);
 
@@ -40,16 +47,21 @@ TestWindow::TestWindow(QWidget *parent)
     QPen shadowPen1(Qt::blue);
     shadowPen1.setWidth(3);
     shadowPen1.setStyle(Qt::DashLine);
-    QPen shadowPen2(Qt::red);
+    QPen shadowPen2(Qt::darkGreen);
     shadowPen2.setWidth(3);
     shadowPen2.setStyle(Qt::DashLine);
+    QPen shadowPen3(Qt::red);
+    shadowPen3.setWidth(3);
+    shadowPen3.setStyle(Qt::DashLine);
     series1->setPen(shadowPen1);
     series1->setPointLabelsFormat("@xPoint, @yPoint");
     series1->setName("Acquired signal");
     series2->setPen(shadowPen2);
     series2->setPointLabelsFormat("@xPoint, @yPoint");
     series2->setName("Simulated vibrations");
-
+    series3->setPen(shadowPen3);
+    series3->setPointLabelsFormat("@xPoint, @yPoint");
+    series3->setName("Predicted vibrations");
     //#######################
 
     // Chart axes setting
