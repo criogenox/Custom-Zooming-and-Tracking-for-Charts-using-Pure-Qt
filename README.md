@@ -7,7 +7,7 @@
   </a>
   <h3 align="center">Simply focusing on data</h3>
   <p align="center">
-    All-in-one zoom and tracking capabilities for Qt charts series 
+    All-in-one custom zoom and tracking capabilities for Qt charts series 
   </p>
 </div>
 
