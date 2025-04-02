@@ -60,7 +60,7 @@ private:
     void rangeUpdate();
 };
 
-class TrackingSeries final : public QSplineSeries {
+class TrackingSeries final : public QLineSeries {
     Q_OBJECT
 
 public:

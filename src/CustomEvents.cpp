@@ -253,7 +253,7 @@ void ZoomAndScroll::mouseMoveEvent(QMouseEvent *event) {
 }
 
 TrackingSeries::TrackingSeries(ZoomAndScroll *chartView, QObject *parent)
-    : QSplineSeries(parent)
+    : QLineSeries(parent)
       , m_chartView(chartView) // Pointer to chart class to get the toggle states
       , bullet(nullptr) {
     // Signal/slot to transfer mouse move events to tracking method
@@ -276,10 +276,12 @@ void TrackingSeries::hideTooltip() {
 
 void TrackingSeries::deleteTooltip() {
     if (!toolTips.isEmpty()) {
+        if (shadowEffect.data()) {
+            qDeleteAll(shadowEffect);
+            shadowEffect.clear();
+        }
         qDeleteAll(toolTips); // Delete all
-        qDeleteAll(shadowEffect);
         toolTips.clear(); // Clear the list
-        shadowEffect.clear();
     }
 }
 
@@ -297,7 +299,7 @@ TrackingSeries::~TrackingSeries() {
 void TrackingSeries::onMouseMoved(const QPointF mousePos,
                                   const QMouseEvent *event,
                                   QVector<qreal> &limits) {
-    const QPointF chartPos = m_chartView->chart()->mapToValue(mousePos);
+    const QPointF chartPos = chart()->mapToValue(mousePos);
     // Visibility checking condition
     const bool isVisible = chartPos.x() >= limits[0] && chartPos.x() <= limits[1]
                            && chartPos.y() >= limits[2] && chartPos.y() <= limits[3];
