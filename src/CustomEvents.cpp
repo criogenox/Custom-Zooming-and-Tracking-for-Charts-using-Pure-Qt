@@ -280,19 +280,19 @@ void TrackingSeries::deleteTooltip() {
             qDeleteAll(shadowEffect);
             shadowEffect.clear();
         }
-        qDeleteAll(toolTips); // Delete all
-        toolTips.clear(); // Clear the list
+        qDeleteAll(toolTips);
+        toolTips.clear();
     }
 }
 
 TrackingSeries::~TrackingSeries() {
-    hideTooltip(); // Hide tooltips before destruction
-    deleteTooltip(); // Clean up tooltips and their shadow effects
-    qDeleteAll(lines); // Delete track-lines
-    lines.clear(); // Clear the list
+    hideTooltip(); // Hide before destruction
+    deleteTooltip(); // Correct deallocation memory order (no double attempt)
+    qDeleteAll(lines); // Track-lines
+    lines.clear();
     if (bullet) {
-        delete bullet; // Delete intersection-point bullet
-        bullet = nullptr; // Avoid dangling pointer
+        delete bullet; // Intersection-point bullet
+        bullet = nullptr; // Avoiding dangling pointer
     }
 }
 
