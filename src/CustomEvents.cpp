@@ -287,7 +287,7 @@ void TrackingSeries::deleteTooltip() {
 
 TrackingSeries::~TrackingSeries() {
     hideTooltip(); // Hide before destruction
-    deleteTooltip(); // Correct deallocation memory order (no double attempt)
+    deleteTooltip(); // Correct deallocation memory order (no double deallocation)
     qDeleteAll(lines); // Track-lines
     lines.clear();
     if (bullet) {

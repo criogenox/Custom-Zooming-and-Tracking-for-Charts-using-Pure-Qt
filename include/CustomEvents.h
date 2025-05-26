@@ -93,6 +93,7 @@ private:
     QGraphicsEllipseItem *bullet;
     QTimer *tooltipTimer;
     QList<QGraphicsDropShadowEffect *> shadowEffect;
+
     static qreal distanceToLineSegment(const QPointF &point,
                                        const QPointF &lineStart,
                                        const QPointF &lineEnd);
