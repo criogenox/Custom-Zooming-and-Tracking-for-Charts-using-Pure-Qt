@@ -79,7 +79,7 @@ Features implemented by overridden event handlers for mouse and keyboard inputs 
 
 - Support for data and axes labels, and cursor tooltip.
 
-- Potential support for several Series' types [Testing Roadmap][#testingroadmap]
+- Potential support for several Series' types ([see above](#ssRoadmap))
 
 - Handles crosshair (continuous lines) and truncated track lines (visually emphasizing the intersection effect).
 
@@ -117,7 +117,7 @@ Tracking functionality in use: series' individual labeling by crosshair.
 </div>
 
 <!-- ROADMAP -->
-## Testing Roadmap
+## Testing Roadmap <a id='ssRoadmap'></a>
 
 - [x] QLineSeries
 - [ ] QScatterSeries
