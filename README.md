@@ -117,7 +117,7 @@ Tracking functionality in use: series' individual labeling by crosshair.
 </div>
 
 <!-- ROADMAP -->
-## Testing Roadmap <a id='ssRoadmap'></a>
+## Testing Roadmap <a href="#roadmap"></a>
 
 - [x] QLineSeries
 - [ ] QScatterSeries
