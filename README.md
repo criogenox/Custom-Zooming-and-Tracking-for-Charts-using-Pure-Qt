@@ -79,7 +79,7 @@ Features implemented by overridden event handlers for mouse and keyboard inputs 
 
 - Support for data and axes labels, and cursor tooltip.
 
-- Potential support for several Series' types [Testing Roadmap][#testing-roadmap]
+- Potential support for several Series' types [Testing Roadmap][#testingroadmap]
 
 - Handles crosshair (continuous lines) and truncated track lines (visually emphasizing the intersection effect).
 
