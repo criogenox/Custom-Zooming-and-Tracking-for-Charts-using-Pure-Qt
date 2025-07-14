@@ -2,7 +2,7 @@
 #define CUSTOMCHARTUTILS_H
 #pragma once
 
-#include <QtCharts/QLineSeries>
+#include <QtCharts>
 #include <QtTypes>
 
 class ChartUtils {

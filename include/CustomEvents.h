@@ -1,6 +1,5 @@
 #ifndef CUSTOMEVENTS_H
 #define CUSTOMEVENTS_H
-
 #pragma once
 
 #include <QGraphicsEllipseItem>
@@ -8,12 +7,15 @@
 #include <QLabel>
 #include <QMainWindow>
 #include <QMouseEvent>
+#include <qscatterseries.h>
 #include <QSplineSeries>
 #include <QTimer>
 #include <QToolTip>
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
 #include <QtCharts/QValueAxis>
+
+#include "CustomEvents.h"
 
 class ZoomAndScroll final : public QChartView {
     Q_OBJECT
@@ -32,7 +34,16 @@ signals:
                     QMouseEvent *event,
                     QVector<qreal> &limits);
 
-protected:
+    void hide_when_move();
+
+private:
+    bool resizeZoom;
+    QPoint lastMousePos;
+    QPoint rubberBandStartPos;
+    QScopedPointer<QGraphicsRectItem> rubberBandItem;
+    qreal xMin{}, xMax{}, yMin{}, yMax{};
+    QVector<qreal> limits{};
+
     void mousePressEvent(QMouseEvent *event) override;
 
     void mouseMoveEvent(QMouseEvent *event) override;
@@ -44,14 +55,6 @@ protected:
     void wheelEvent(QWheelEvent *event) override;
 
     void keyPressEvent(QKeyEvent *event) override;
-
-private:
-    bool resizeZoom;
-    QPoint lastMousePos;
-    QPoint rubberBandStartPos;
-    QScopedPointer<QGraphicsRectItem> rubberBandItem;
-    qreal xMin{}, xMax{}, yMin{}, yMax{};
-    QVector<qreal> limits{};
 
     void clearRubberBand();
 
@@ -86,6 +89,8 @@ private slots:
                       const QMouseEvent *event,
                       QVector<qreal> &limits);
 
+    void hideAll();
+
 private:
     ZoomAndScroll *m_chartView;
     QList<QGraphicsLineItem *> lines;
@@ -116,9 +121,6 @@ private:
 
     void drawBullet(const QPointF &point);
 
-    void hideAll();
-
     void deleteTooltip();
 };
-
 #endif

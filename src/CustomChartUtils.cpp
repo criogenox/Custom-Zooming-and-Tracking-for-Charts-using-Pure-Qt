@@ -1,7 +1,5 @@
 #include "CustomChartUtils.h"
 
-#include <QtCharts>
-
 qreal ChartUtils::minX = std::numeric_limits<qreal>::max();;
 qreal ChartUtils::maxX = std::numeric_limits<qreal>::lowest();
 qreal ChartUtils::minY = std::numeric_limits<qreal>::max();
