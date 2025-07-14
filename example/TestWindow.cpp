@@ -1,4 +1,3 @@
-#include <QDebug>
 #include <QVBoxLayout>
 #include "TestWindow.h"
 #include "CustomChartUtils.h"
@@ -15,21 +14,21 @@ TestWindow::TestWindow(QWidget *parent)
     auto *series2 = new TrackingSeries(chartView);
     auto *series3 = new TrackingSeries(chartView);
     //*******************************************
-
+    int maxPoints = 1000;
     //  Series of random data
-    for (int i = 0; i < 200; ++i) {
+    for (int i = 0; i < maxPoints; ++i) {
         qreal yValue = rand() % 6;
         qreal j = 2 * i;
         qreal _yValue = 0.9 * yValue;
         series1->append(j, _yValue);
     }
-    for (int i = 0; i < 200; ++i) {
+    for (int i = 0; i < maxPoints; ++i) {
         qreal yValue = rand() % 4 + 15;
         qreal j = 2 * i;
         qreal _yValue = 0.7 * yValue;
         series2->append(j, _yValue);
     }
-    for (int i = 0; i < 200; ++i) {
+    for (int i = 0; i < maxPoints; ++i) {
         qreal yValue = rand() % 8 + 30;
         qreal j = 2 * i;
         qreal _yValue = 0.7 * yValue;
