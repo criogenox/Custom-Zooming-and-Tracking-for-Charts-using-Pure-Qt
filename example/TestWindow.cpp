@@ -1,6 +1,5 @@
 #include <QVBoxLayout>
 #include "TestWindow.h"
-#include "CustomChartUtils.h"
 #include "CustomEvents.h"
 
 TestWindow::TestWindow(QWidget *parent)
@@ -10,9 +9,9 @@ TestWindow::TestWindow(QWidget *parent)
 
     // Custom classes ***************************
     auto *chartView = new ZoomAndScroll(chart);
-    auto *series1 = new TrackingSeries(chartView);
-    auto *series2 = new TrackingSeries(chartView);
-    auto *series3 = new TrackingSeries(chartView);
+    auto *series1 = new LineSeries(chartView);
+    auto *series2 = new ScatterSeries(chartView);
+    auto *series3 = new SplineSeries(chartView);
     //*******************************************
     int maxPoints = 1000;
     //  Series of random data
@@ -38,29 +37,38 @@ TestWindow::TestWindow(QWidget *parent)
     chart->addSeries(series2);
     chart->addSeries(series3);
     // Setting global chart limits
-    ChartUtils::updateXLimits(chart);
+    chartView->updateXLimits(chart);
 
     //#######################
 
     // Series setting
+    // -------------
     QPen shadowPen1(Qt::blue);
     shadowPen1.setWidth(3);
-    shadowPen1.setStyle(Qt::DashLine);
-    QPen shadowPen2(Qt::darkGreen);
-    shadowPen2.setWidth(3);
-    shadowPen2.setStyle(Qt::DashLine);
-    QPen shadowPen3(Qt::red);
-    shadowPen3.setWidth(3);
-    shadowPen3.setStyle(Qt::DashLine);
+    shadowPen1.setStyle(Qt::SolidLine);
+    shadowPen1.setCapStyle(Qt::RoundCap);
+    shadowPen1.setJoinStyle(Qt::RoundJoin);
     series1->setPen(shadowPen1);
     series1->setPointLabelsFormat("@xPoint, @yPoint");
     series1->setName("Acquired signal");
+    // -------------
+    QPen shadowPen2(Qt::darkGreen);
+    // shadowPen2.setWidth(3);
+    // shadowPen2.setStyle(Qt::DashLine);
     series2->setPen(shadowPen2);
+    series2->setMarkerShape(QScatterSeries::MarkerShapeStar);
+    series2->setMarkerSize(10);
+    // series2->setBorderColor(Qt::blue);
     series2->setPointLabelsFormat("@xPoint, @yPoint");
     series2->setName("Simulated vibrations");
+    // -------------
+    QPen shadowPen3(Qt::red);
+    shadowPen3.setWidth(3);
+    shadowPen3.setStyle(Qt::DashLine);
     series3->setPen(shadowPen3);
     series3->setPointLabelsFormat("@xPoint, @yPoint");
     series3->setName("Predicted vibrations");
+
     //#######################
 
     // Chart axes setting
@@ -85,9 +93,9 @@ TestWindow::TestWindow(QWidget *parent)
                 axis->setGridLinePen(axisColor);
                 // Setting axes ranges
                 if (orientation == Qt::Horizontal) {
-                    axis->setRange(ChartUtils::minX, ChartUtils::maxX);
+                    axis->setRange(chartView->minX, chartView->maxX);
                 } else if (orientation == Qt::Vertical) {
-                    axis->setRange(ChartUtils::minY, ChartUtils::maxY);
+                    axis->setRange(chartView->minY, chartView->maxY);
                 }
                 axis->setTitleText(title);
             }
