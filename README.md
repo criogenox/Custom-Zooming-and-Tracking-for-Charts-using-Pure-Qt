@@ -28,7 +28,18 @@
     :muscle: don't let anyone get you down :muscle:
   </p> 
    <div>
-   
+
+##  General view sample
+
+<div align="justify"> 
+  <!-- <img align="right" src="https://user-images.githubusercontent.com/53323058/230650942-4c2e0ad4-2d52-46fe-aa67-8860c642e5f6.png" width="500"> -->
+<img align="center" src="https://github.com/criogenox/All-in-one-Zoom-and-Tracking-for-Qt-Charts/assets/53323058/38ad6ab9-0bbf-4378-9021-eb448f6c22d3.png">
+   </p>
+       <p align="center">
+Tracking functionality in use: series' individual labeling by crosshair.
+  </p> 
+</div>
+
 ## Background & Details
 
 ### Custom zoom class
@@ -105,22 +116,11 @@ Features implemented by overridden event handlers for mouse and keyboard inputs 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
-##  General view sample
-
-<div align="justify"> 
-  <!-- <img align="right" src="https://user-images.githubusercontent.com/53323058/230650942-4c2e0ad4-2d52-46fe-aa67-8860c642e5f6.png" width="500"> -->
-<img align="center" src="https://github.com/criogenox/All-in-one-Zoom-and-Tracking-for-Qt-Charts/assets/53323058/7c5c897f-1410-4d45-acf3-f3a42ff65564.png">
-   </p>
-       <p align="center">
-Tracking functionality in use: series' individual labeling by crosshair.
-  </p> 
-</div>
-
 <!-- ROADMAP -->
 ## (In-depth) Testing Roadmap 
 
 - [x] QLineSeries
-- [ ] QScatterSeries
+- [X] QScatterSeries
 - [ ] QSplineSeries
 
 <!-- LICENSE -->
