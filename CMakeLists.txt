@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.31)
 set(PROJECT_NAME "trackplot")
 project(${PROJECT_NAME} VERSION 1.0.0 LANGUAGES CXX)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
 set(TARGET ${PROJECT_NAME})
 set(TARGET_LIB "${PROJECT_NAME}_lib")
 if (CMAKE_BUILD_TYPE MATCHES Debug)
@@ -12,7 +13,6 @@ set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR})
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
-set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #-----------#-----------#-----------#
 
@@ -53,7 +53,7 @@ target_link_libraries(${TARGET}
 #        Qt${QT_VERSION_MAJOR}::Gui
 #        Qt${QT_VERSION_MAJOR}::Charts)
 ##-----------#-----------#-----------#
-#
+
 #add_executable(${TARGET} ${CPPM} ${HS} ${HI}) # (2) standalone with linked library
 #target_link_libraries(${TARGET}
 #        trackplot_lib
