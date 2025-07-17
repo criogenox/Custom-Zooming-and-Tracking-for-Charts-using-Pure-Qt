@@ -1,7 +1,6 @@
 #include <QScopedPointer>
 
 #include "CustomEvents.h"
-#include "CustomChartUtils.h"
 
 ZoomAndScroll::ZoomAndScroll(QChart *chart, QWidget *parent)
     : QChartView(chart, parent)
@@ -11,6 +10,27 @@ ZoomAndScroll::ZoomAndScroll(QChart *chart, QWidget *parent)
       , resizeZoom(false)
       , rubberBandItem(nullptr) {
     setMouseTracking(true); // Enable mouse tracking (runs once)
+    minX = std::numeric_limits<qreal>::max();;
+    maxX = std::numeric_limits<qreal>::lowest();
+    minY = std::numeric_limits<qreal>::max();
+    maxY = std::numeric_limits<qreal>::lowest();
+}
+
+void ZoomAndScroll::updateXLimits(const QChart *chart) {
+    // Iteration to find the min/max values
+    for (const auto &series: chart->series()) {
+        if (const auto lineSeries = qobject_cast<QLineSeries *>(series)) {
+            for (const QPointF &point: lineSeries->points()) {
+                minX = qMin(minX, point.x());
+                maxX = qMax(maxX, point.x());
+                minY = qMin(minY, point.y());
+                maxY = qMax(maxY, point.y());
+            }
+        }
+    }
+    const qreal factor = 0.1 * maxY;
+    maxY += factor;
+    minY -= factor;
 }
 
 void ZoomAndScroll::rangeUpdate() {
@@ -38,10 +58,10 @@ void ZoomAndScroll::resetChartToOriginal() const {
     auto *yAxis = dynamic_cast<QValueAxis *>(chart()->axes(Qt::Vertical).first());
 
     if (xAxis) {
-        xAxis->setRange(ChartUtils::minX, ChartUtils::maxX);
+        xAxis->setRange(minX, maxX);
     }
     if (yAxis) {
-        yAxis->setRange(ChartUtils::minY, ChartUtils::maxY);
+        yAxis->setRange(minY, maxY);
     }
     chart()->update(); // Chart view refreshing
 }
@@ -167,10 +187,10 @@ void ZoomAndScroll::wheelEvent(QWheelEvent *event) {
                         (rangeY / factor) * (1 - invertedY / plotArea.height());
 
         // Clamp new limits to min/max values
-        newMinX = std::max(newMinX, ChartUtils::minX);
-        newMaxX = std::min(newMaxX, ChartUtils::maxX);
-        newMinY = std::max(newMinY, ChartUtils::minY);
-        newMaxY = std::min(newMaxY, ChartUtils::maxY);
+        newMinX = std::max(newMinX, minX);
+        newMaxX = std::min(newMaxX, maxX);
+        newMinY = std::max(newMinY, minY);
+        newMaxY = std::min(newMaxY, maxY);
 
         // Handle horizontal panning
         if (resizeZoom) {
@@ -205,12 +225,12 @@ void ZoomAndScroll::wheelEvent(QWheelEvent *event) {
 void ZoomAndScroll::mouseMoveEvent(QMouseEvent *event) {
     rangeUpdate();
     if (rubberBandItem) {
-        // Set the area to zoom
         // -----------------
         if (toggleState) {
             emit hide_when_move();
         }
         // -----------------
+        // Set the area to zoom
         QRectF rubberBandRect(rubberBandStartPos, event->pos());
         rubberBandRect = rubberBandRect.normalized();
         rubberBandItem->setRect(rubberBandRect);
@@ -224,23 +244,23 @@ void ZoomAndScroll::mouseMoveEvent(QMouseEvent *event) {
         deltaY *= sensitivity;
 
         if (std::signbit(deltaX)) {
-            if (xMin <= ChartUtils::minX) {
+            if (xMin <= minX) {
                 deltaX = 0.00;
             }
         }
         if (!std::signbit(deltaX)) {
-            if (xMax >= ChartUtils::maxX) {
+            if (xMax >= maxX) {
                 deltaX = 0.00;
             }
         }
 
         if (std::signbit(deltaY)) {
-            if (yMin <= ChartUtils::minY) {
+            if (yMin <= minY) {
                 deltaY = 0.00;
             }
         }
         if (!std::signbit(deltaY)) {
-            if (yMax >= ChartUtils::maxY) {
+            if (yMax >= maxY) {
                 deltaY = 0.00;
             }
         }
@@ -258,58 +278,42 @@ void ZoomAndScroll::mouseMoveEvent(QMouseEvent *event) {
     }
 }
 
-TrackingSeries::TrackingSeries(ZoomAndScroll *chartView, QObject *parent)
-    : QLineSeries(parent)
-      , m_chartView(chartView) // Pointer to chart class to get the toggle states
-      , bullet(nullptr) {
+// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+LineSeries::LineSeries(ZoomAndScroll *chartView, QObject *parent)
+    : QLineSeries(parent), Methods(this, chartView)
+      , m_chartView(chartView) {
     // Signal/slot to transfer mouse move events to tracking method
     connect(m_chartView,
             &ZoomAndScroll::mouseMoved,
             this,
-            &TrackingSeries::onMouseMoved);
+            &LineSeries::onMouseMoved);
     // Signal/slot for tracking's hiding effect during mouse events
     connect(m_chartView,
             &ZoomAndScroll::hide_when_move,
             this,
-            &TrackingSeries::hideAll);
+            &LineSeries::hideAll);
     // Signal/slot to manage the timed hiding of labels
     tooltipTimer = new QTimer(this);
-    connect(tooltipTimer, &QTimer::timeout, this, &TrackingSeries::hideTooltip);
+    connect(tooltipTimer, &QTimer::timeout, this, &LineSeries::hideAll);
 }
 
-void TrackingSeries::hideTooltip() {
-    if (!toolTips.isEmpty()) {
+void LineSeries::hideAll() {
+    if (!lines.isEmpty()) {
+        lines[0]->hide();
+        lines[1]->hide();
         for (const auto tip: toolTips) {
-            tip->hide(); // Hide the tooltips
+            tip->hide();
         }
     }
-}
-
-void TrackingSeries::deleteTooltip() {
-    if (!toolTips.isEmpty()) {
-        if (shadowEffect.data()) {
-            qDeleteAll(shadowEffect);
-            shadowEffect.clear();
-        }
-        qDeleteAll(toolTips);
-        toolTips.clear();
-    }
-}
-
-TrackingSeries::~TrackingSeries() {
-    hideTooltip(); // Hide before destruction
-    deleteTooltip(); // Correct deallocation memory order (no double deallocation)
-    qDeleteAll(lines); // Track-lines
-    lines.clear();
     if (bullet) {
-        delete bullet; // Intersection-point bullet
-        bullet = nullptr; // Avoiding dangling pointer
+        bullet->hide();
     }
 }
 
-void TrackingSeries::onMouseMoved(const QPointF mousePos,
-                                  const QMouseEvent *event,
-                                  QVector<qreal> &limits) {
+void LineSeries::onMouseMoved(const QPointF mousePos,
+                              const QMouseEvent *event,
+                              QVector<qreal> &limits) {
     const QPointF chartPos = chart()->mapToValue(mousePos);
     // Visibility checking condition
     const bool isVisible = chartPos.x() >= limits[0] && chartPos.x() <= limits[1]
@@ -326,8 +330,148 @@ void TrackingSeries::onMouseMoved(const QPointF mousePos,
     }
 }
 
+// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+ScatterSeries::ScatterSeries(ZoomAndScroll *chartView, QObject *parent)
+    : QScatterSeries(parent), Methods(this, chartView)
+      , m_chartView(chartView) {
+    // Signal/slot to transfer mouse move events to tracking method
+    connect(m_chartView,
+            &ZoomAndScroll::mouseMoved,
+            this,
+            &ScatterSeries::onMouseMoved);
+    // Signal/slot for tracking's hiding effect during mouse events
+    connect(m_chartView,
+            &ZoomAndScroll::hide_when_move,
+            this,
+            &ScatterSeries::hideAll);
+    // Signal/slot to manage the timed hiding of labels
+    tooltipTimer = new QTimer(this);
+    connect(tooltipTimer, &QTimer::timeout, this, &ScatterSeries::hideAll);
+}
+
+void ScatterSeries::hideAll() {
+    if (!lines.isEmpty()) {
+        lines[0]->hide();
+        lines[1]->hide();
+        for (const auto tip: toolTips) {
+            tip->hide();
+        }
+    }
+    if (bullet) {
+        bullet->hide();
+    }
+}
+
+void ScatterSeries::onMouseMoved(const QPointF mousePos,
+                                 const QMouseEvent *event,
+                                 QVector<qreal> &limits) {
+    const QPointF chartPos = chart()->mapToValue(mousePos);
+    // Visibility checking condition
+    const bool isVisible = chartPos.x() >= limits[0] && chartPos.x() <= limits[1]
+                           && chartPos.y() >= limits[2] && chartPos.y() <= limits[3];
+
+    if (m_chartView->toggleFocus && isVisible) {
+        handleTooltipOnFocus(chartPos, event); // Labeling by mouse hovering
+    }
+
+    if (!m_chartView->toggleFocus && m_chartView->toggleState && isVisible) {
+        handleTooltipForTracking(chartPos, mousePos, limits); // Tracking by line intersection
+    } else {
+        hideAll();
+    }
+}
+
+// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+SplineSeries::SplineSeries(ZoomAndScroll *chartView, QObject *parent)
+    : QSplineSeries(parent), Methods(this, chartView)
+      , m_chartView(chartView) {
+    // Signal/slot to transfer mouse move events to tracking method
+    connect(m_chartView,
+            &ZoomAndScroll::mouseMoved,
+            this,
+            &SplineSeries::onMouseMoved);
+    // Signal/slot for tracking's hiding effect during mouse events
+    connect(m_chartView,
+            &ZoomAndScroll::hide_when_move,
+            this,
+            &SplineSeries::hideAll);
+    // Signal/slot to manage the timed hiding of labels
+    tooltipTimer = new QTimer(this);
+    connect(tooltipTimer, &QTimer::timeout, this, &SplineSeries::hideAll);
+}
+
+void SplineSeries::hideAll() {
+    if (!lines.isEmpty()) {
+        lines[0]->hide();
+        lines[1]->hide();
+        if (!toolTips.isEmpty()) {
+            for (const auto tip: toolTips) {
+                tip->hide();
+            }
+        }
+    }
+    if (bullet) {
+        bullet->hide();
+    }
+}
+
+void SplineSeries::onMouseMoved(const QPointF mousePos,
+                                const QMouseEvent *event,
+                                QVector<qreal> &limits) {
+    const QPointF chartPos = chart()->mapToValue(mousePos);
+    // Visibility checking condition
+    const bool isVisible = chartPos.x() >= limits[0] && chartPos.x() <= limits[1]
+                           && chartPos.y() >= limits[2] && chartPos.y() <= limits[3];
+
+    if (m_chartView->toggleFocus && isVisible) {
+        handleTooltipOnFocus(chartPos, event); // Labeling by mouse hovering
+    }
+
+    if (!m_chartView->toggleFocus && m_chartView->toggleState && isVisible) {
+        handleTooltipForTracking(chartPos, mousePos, limits); // Tracking by line intersection
+    } else {
+        hideAll();
+    }
+}
+
+// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+template<typename SeriesType>
+Methods<SeriesType>::Methods(SeriesType *ptr, ZoomAndScroll *m_chartView)
+    : bullet(nullptr),
+      ptr(ptr),
+      m_chartView(m_chartView) {
+}
+
+template<typename SeriesType>
+void Methods<SeriesType>::deleteTooltip() {
+    if (!toolTips.isEmpty()) {
+        if (shadowEffect.data()) {
+            qDeleteAll(shadowEffect);
+            shadowEffect.clear();
+        }
+        qDeleteAll(toolTips);
+        toolTips.clear();
+    }
+}
+
+template<typename SeriesType>
+Methods<SeriesType>::~Methods() {
+    ptr->hideTooltip(); // Hide before destruction
+    deleteTooltip(); // Correct deallocation memory order (no double deallocation)
+    qDeleteAll(lines); // Track-lines
+    lines.clear();
+    if (bullet) {
+        delete bullet; // Intersection-point bullet
+        bullet = nullptr; // Avoiding dangling pointer
+    }
+}
+
 // Labeling by mouse hovering
-void TrackingSeries::handleTooltipOnFocus(const QPointF &chartPos, const QMouseEvent *event) {
+template<typename SeriesType>
+void Methods<SeriesType>::handleTooltipOnFocus(const QPointF &chartPos, const QMouseEvent *event) {
     QList<Intercerp> intersectionVector = findIntersection(chartPos);
     // The Tooltip is displayed only if it is within a threshold distance
     if (intersectionVector[0].distance < 0.5) {
@@ -344,8 +488,10 @@ void TrackingSeries::handleTooltipOnFocus(const QPointF &chartPos, const QMouseE
     }
 }
 
-QList<TrackingSeries::Intercerp> TrackingSeries::findIntersection(const QPointF mouse) {
-    const auto *series = qobject_cast<QLineSeries *>(this);
+template<typename SeriesType>
+QList<typename Methods<SeriesType>::Intercerp>
+Methods<SeriesType>::findIntersection(const QPointF mouse) const {
+    const auto *series = qobject_cast<SeriesType *>(ptr);
     if (!series || series->count() < 2) {
         return {}; // Return an empty list if no series or not enough points
     }
@@ -404,9 +550,10 @@ QList<TrackingSeries::Intercerp> TrackingSeries::findIntersection(const QPointF 
 }
 
 // Distance calculation from a point to a line segment
-qreal TrackingSeries::distanceToLineSegment(const QPointF &point,
-                                            const QPointF &lineStart,
-                                            const QPointF &lineEnd) {
+template<typename SeriesType>
+qreal Methods<SeriesType>::distanceToLineSegment(const QPointF &point,
+                                                 const QPointF &lineStart,
+                                                 const QPointF &lineEnd) {
     const qreal dx = lineEnd.x() - lineStart.x();
     const qreal dy = lineEnd.y() - lineStart.y();
     if ((dx == 0) && (dy == 0)) {
@@ -428,22 +575,9 @@ qreal TrackingSeries::distanceToLineSegment(const QPointF &point,
     return QLineF(point, projection).length();
 }
 
-void TrackingSeries::hideAll() {
-    if (!lines.isEmpty()) {
-        lines[0]->hide(); // Hide the track-lines when tracking is disabled
-        lines[1]->hide();
-        for (const auto tip: toolTips) {
-            tip->hide(); // Hide the tooltip
-        }
-    }
-    // Remove bullet when tracking is disabled
-    if (bullet) {
-        bullet->hide();
-    }
-}
-
 // Tracking by line intersection
-void TrackingSeries::handleTooltipForTracking(
+template<typename SeriesType>
+void Methods<SeriesType>::handleTooltipForTracking(
     const QPointF &chartPos, const QPointF &mousePos, QVector<qreal> &limits) {
     // Find intersection with the series
     QList<Intercerp> intersectionVector = findIntersection(chartPos);
@@ -451,18 +585,19 @@ void TrackingSeries::handleTooltipForTracking(
         return;
     };
     const QPointF intersectionPoint = intersectionVector[0].pos;
-    const QPointF IPpixel = chart()->mapToPosition(intersectionPoint);
+    const QPointF IPpixel = m_chartView->chart()->mapToPosition(intersectionPoint);
     if (!intersectionPoint.isNull() && intersectionPoint.y() <= limits[3] &&
         intersectionPoint.y() >= limits[2]) {
         updateVerticalLine(mousePos, IPpixel, limits); // Draw tracking lines
         setTooltips(intersectionPoint, IPpixel); // Creates the labels
         drawBullet(intersectionPoint); // Draw the bullet at the intersection
     } else {
-        hideAll();
+        ptr->hideAll();
     }
 }
 
-void TrackingSeries::createLines(int n) {
+template<typename SeriesType>
+void Methods<SeriesType>::createLines(int n) {
     // Resize the QList to hold n track-lines
     lines.resize(n);
 
@@ -472,18 +607,19 @@ void TrackingSeries::createLines(int n) {
     });
 };
 
-void TrackingSeries::updateVerticalLine(
+template<typename SeriesType>
+void Methods<SeriesType>::updateVerticalLine(
     // Update track-lines position
     const QPointF &mousePos, const QPointF &IPpixel, QVector<qreal> &limits) {
-    QPointF chartPos = chart()->mapToValue(mousePos);
+    QPointF chartPos = m_chartView->chart()->mapToValue(mousePos);
     if (chartPos.x() >= limits[0] && chartPos.x() <= limits[1] && chartPos.y() >= limits[2] &&
         chartPos.y() <= limits[3]) {
         if (lines.isEmpty()) {
             createLines(2);
             lines[0]->setPen(QPen(Qt::blue, 1, Qt::DashLine));
             lines[1]->setPen(QPen(Qt::blue, 1, Qt::DashLine));
-            chart()->scene()->addItem(lines[0]);
-            chart()->scene()->addItem(lines[1]);
+            m_chartView->chart()->scene()->addItem(lines[0]);
+            m_chartView->chart()->scene()->addItem(lines[1]);
         }
 
         lines[0]->show();
@@ -491,23 +627,24 @@ void TrackingSeries::updateVerticalLine(
 
         // Track-line type switch: Crosshair | truncated
         if (m_chartView->toggleLines) {
-            lines[0]->setLine(mousePos.x(), IPpixel.y(), mousePos.x(), chart()->plotArea().top());
-            lines[1]->setLine(chart()->plotArea().left(), IPpixel.y(), IPpixel.x(), IPpixel.y());
+            lines[0]->setLine(mousePos.x(), IPpixel.y(), mousePos.x(), m_chartView->chart()->plotArea().top());
+            lines[1]->setLine(m_chartView->chart()->plotArea().left(), IPpixel.y(), IPpixel.x(), IPpixel.y());
         } else {
             lines[0]->setLine(mousePos.x(),
-                              chart()->plotArea().bottom(),
+                              m_chartView->chart()->plotArea().bottom(),
                               mousePos.x(),
-                              chart()->plotArea().top());
+                              m_chartView->chart()->plotArea().top());
 
-            lines[1]->setLine(chart()->plotArea().left(),
+            lines[1]->setLine(m_chartView->chart()->plotArea().left(),
                               IPpixel.y(),
-                              chart()->plotArea().right(),
+                              m_chartView->chart()->plotArea().right(),
                               IPpixel.y());
         }
     }
 }
 
-void TrackingSeries::createTooltips(const QList<TooltipData> &tooltipDataList) {
+template<typename SeriesType>
+void Methods<SeriesType>::createTooltips(const QList<TooltipData> &tooltipDataList) {
     const qsizetype n = tooltipDataList.size();
     if (toolTips.size() < n) {
         toolTips.resize(n);
@@ -563,13 +700,14 @@ void TrackingSeries::createTooltips(const QList<TooltipData> &tooltipDataList) {
     tooltipTimer->start(1000); // Hide all after 1 second (1000 ms)
 }
 
-void TrackingSeries::setTooltips(const QPointF &intersectionPoint, const QPointF &IPpixel) {
+template<typename SeriesType>
+void Methods<SeriesType>::setTooltips(const QPointF &intersectionPoint, const QPointF &IPpixel) {
     // Cast IPpixel to QPoint
     const QPoint IPcd(static_cast<int>(IPpixel.x()), static_cast<int>(IPpixel.y()));
 
     const auto IP = QPoint(IPcd.x() + 5, IPcd.y() + 5);
-    const auto xLabel = QPoint(IPcd.x(), static_cast<int>(chart()->plotArea().top()) - 25);
-    const auto yLabel = QPoint(static_cast<int>(chart()->plotArea().left()) - 60, IPcd.y());
+    const auto xLabel = QPoint(IPcd.x(), static_cast<int>(m_chartView->chart()->plotArea().top()) - 25);
+    const auto yLabel = QPoint(static_cast<int>(m_chartView->chart()->plotArea().left()) - 60, IPcd.y());
     const QString tooltipText = QString("X: %1\nY: %2")
             .arg(intersectionPoint.x(), 0, 'f', 2)
             .arg(intersectionPoint.y(), 0, 'f', 2);
@@ -582,7 +720,7 @@ void TrackingSeries::setTooltips(const QPointF &intersectionPoint, const QPointF
     // Create data for tooltips
     QList<TooltipData> tooltipDataList;
 
-    const auto *series = qobject_cast<QLineSeries *>(this);
+    const auto *series = qobject_cast<SeriesType *>(ptr);
     const QColor colorSerie = series->pen().color(); // Get the color from the series
 
     //------- x custom tooltip
@@ -597,14 +735,15 @@ void TrackingSeries::setTooltips(const QPointF &intersectionPoint, const QPointF
     createTooltips(tooltipDataList);
 }
 
-void TrackingSeries::drawBullet(const QPointF &point) {
+template<typename SeriesType>
+void Methods<SeriesType>::drawBullet(const QPointF &point) {
     // Remove existing intersection bullet symbol
     if (bullet) {
-        chart()->scene()->removeItem(bullet);
+        m_chartView->chart()->scene()->removeItem(bullet);
         delete bullet;
         bullet = nullptr; // Avoiding dangling pointer
     }
-    const QPointF pointPixel = chart()->mapToPosition(point);
+    const QPointF pointPixel = m_chartView->chart()->mapToPosition(point);
 
     // Create a new bullet centered at the intersection point
     bullet = new QGraphicsEllipseItem(pointPixel.x() - 5,
@@ -612,5 +751,14 @@ void TrackingSeries::drawBullet(const QPointF &point) {
                                       10,
                                       10); // 10x10 bullet
     bullet->setBrush(Qt::red); // Bullet color
-    chart()->scene()->addItem(bullet);
+    m_chartView->chart()->scene()->addItem(bullet);
+}
+
+template<typename SeriesType>
+void Methods<SeriesType>::hideTooltip() {
+    if (!toolTips.isEmpty()) {
+        for (const auto tip: toolTips) {
+            tip->hide(); // Hide the tooltips
+        }
+    }
 }

@@ -2,20 +2,15 @@
 #define CUSTOMEVENTS_H
 #pragma once
 
-#include <QGraphicsEllipseItem>
+#include <QtTypes>
 #include <QGraphicsDropShadowEffect>
 #include <QLabel>
-#include <QMainWindow>
-#include <QMouseEvent>
-#include <qscatterseries.h>
 #include <QSplineSeries>
+#include <QScatterSeries>
 #include <QTimer>
 #include <QToolTip>
 #include <QtCharts/QChartView>
-#include <QtCharts/QLineSeries>
 #include <QtCharts/QValueAxis>
-
-#include "CustomEvents.h"
 
 class ZoomAndScroll final : public QChartView {
     Q_OBJECT
@@ -28,6 +23,12 @@ public:
     bool toggleState;
     bool toggleFocus;
     bool toggleLines;
+    qreal minX;
+    qreal maxX;
+    qreal minY;
+    qreal maxY;
+
+    void updateXLimits(const QChart *chart);
 
 signals:
     void mouseMoved(QPointF mousePos,
@@ -63,14 +64,18 @@ private:
     void rangeUpdate();
 };
 
-class TrackingSeries final : public QLineSeries {
-    Q_OBJECT
+class LineSeries;
+class ScatterSeries;
+class SplineSeries;
 
+template<typename SeriesType>
+class Methods {
 public:
-    explicit TrackingSeries(ZoomAndScroll *chartView, QObject *parent = nullptr);
+    explicit Methods(SeriesType *ptr, ZoomAndScroll *m_chartView);
 
-    ~TrackingSeries() override;
+    ~Methods();
 
+protected:
     struct TooltipData {
         QString text;
         QPoint position;
@@ -82,28 +87,19 @@ public:
         QPointF pos;
     };
 
-private slots:
-    void hideTooltip();
-
-    void onMouseMoved(QPointF mousePos,
-                      const QMouseEvent *event,
-                      QVector<qreal> &limits);
-
-    void hideAll();
-
-private:
-    ZoomAndScroll *m_chartView;
-    QList<QGraphicsLineItem *> lines;
-    QList<QLabel *> toolTips;
+    QTimer *tooltipTimer{};
     QGraphicsEllipseItem *bullet;
-    QTimer *tooltipTimer;
+    QList<QLabel *> toolTips;
+    QList<QGraphicsLineItem *> lines;
     QList<QGraphicsDropShadowEffect *> shadowEffect;
+    SeriesType *ptr;
+    ZoomAndScroll *m_chartView;
 
     static qreal distanceToLineSegment(const QPointF &point,
                                        const QPointF &lineStart,
                                        const QPointF &lineEnd);
 
-    QList<Intercerp> findIntersection(QPointF mouse);
+    [[nodiscard]] QList<Intercerp> findIntersection(QPointF mouse) const;
 
     void handleTooltipOnFocus(const QPointF &chartPos, const QMouseEvent *event);
 
@@ -122,5 +118,55 @@ private:
     void drawBullet(const QPointF &point);
 
     void deleteTooltip();
+
+    void hideTooltip();
+};
+
+class LineSeries final : public QLineSeries, public Methods<LineSeries> {
+    Q_OBJECT
+
+public:
+    explicit LineSeries(ZoomAndScroll *chartView, QObject *parent = nullptr);
+
+    ZoomAndScroll *m_chartView;
+
+public slots:
+    void hideAll();
+
+    void onMouseMoved(QPointF mousePos,
+                      const QMouseEvent *event,
+                      QVector<qreal> &limits);
+};
+
+class ScatterSeries final : public QScatterSeries, public Methods<ScatterSeries> {
+    Q_OBJECT
+
+public:
+    explicit ScatterSeries(ZoomAndScroll *chartView, QObject *parent = nullptr);
+
+    ZoomAndScroll *m_chartView;
+
+public slots:
+    void hideAll();
+
+    void onMouseMoved(QPointF mousePos,
+                      const QMouseEvent *event,
+                      QVector<qreal> &limits);
+};
+
+class SplineSeries final : public QSplineSeries, public Methods<SplineSeries> {
+    Q_OBJECT
+
+public:
+    explicit SplineSeries(ZoomAndScroll *chartView, QObject *parent = nullptr);
+
+    ZoomAndScroll *m_chartView;
+
+public slots:
+    void hideAll();
+
+    void onMouseMoved(QPointF mousePos,
+                      const QMouseEvent *event,
+                      QVector<qreal> &limits);
 };
 #endif
