@@ -32,13 +32,7 @@
 ##  General view sample
 
 | ![Image 1](https://github.com/criogenox/All-in-one-Zoom-and-Tracking-for-Qt-Charts/assets/53323058/38ad6ab9-0bbf-4378-9021-eb448f6c22d3.pn) | ![Image 2](https://github.com/criogenox/All-in-one-Zoom-and-Tracking-for-Qt-Charts/assets/53323058/8d1b4894-d7ce-4942-a7b2-20ba1b64cdca.png) |
-
-<div align="justify"> 
-   </p>
-       <p align="center">
-Tracking functionality in use: series' individual labeling by crosshair.
-  </p> 
-</div>
+|:---:|:---:|
 
 ## Background & Details
 
