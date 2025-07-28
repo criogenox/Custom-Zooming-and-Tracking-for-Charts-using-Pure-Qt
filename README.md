@@ -115,7 +115,7 @@ Features implemented by overridden event handlers for mouse and keyboard inputs 
 
 - [x] QLineSeries
 - [X] QScatterSeries
-- [ ] QSplineSeries
+- [x] QSplineSeries
 
 <!-- LICENSE -->
 ## License
