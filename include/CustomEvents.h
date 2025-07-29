@@ -11,6 +11,7 @@
 #include <QToolTip>
 #include <QtCharts/QChartView>
 #include <QtCharts/QValueAxis>
+#include <QXYSeries>
 
 class ZoomAndScroll final : public QChartView {
     Q_OBJECT
@@ -18,24 +19,12 @@ class ZoomAndScroll final : public QChartView {
 public:
     explicit ZoomAndScroll(QChart *chart, QWidget *parent = nullptr);
 
-    ~ZoomAndScroll() override = default;
-
-    bool toggleState;
-    bool toggleFocus;
-    bool toggleLines;
-    qreal minX;
-    qreal maxX;
-    qreal minY;
-    qreal maxY;
-
-    void updateXLimits(const QChart *chart);
-
 signals:
     void mouseMoved(QPointF mousePos,
                     QMouseEvent *event,
                     QVector<qreal> &limits);
 
-    void hide_when_move();
+    void hideWhenMove();
 
 private:
     bool resizeZoom;
@@ -44,6 +33,11 @@ private:
     QScopedPointer<QGraphicsRectItem> rubberBandItem;
     qreal xMin{}, xMax{}, yMin{}, yMax{};
     QVector<qreal> limits{};
+
+    struct SeriesIntersection {
+        QXYSeries *series{};
+        QPointF point;
+    };
 
     void mousePressEvent(QMouseEvent *event) override;
 
@@ -62,6 +56,23 @@ private:
     void resetChartToOriginal() const;
 
     void rangeUpdate();
+
+public:
+    bool toggleState;
+    bool toggleFocus;
+    bool toggleLines;
+    qreal minX;
+    qreal maxX;
+    qreal minY;
+    qreal maxY;
+
+    void updateXLimits(const QChart *chart);
+
+    void updateIntersections(QXYSeries *series, const QPointF &point);
+
+    [[nodiscard]] QXYSeries *findBottomSeries() const;
+
+    QList<SeriesIntersection> currentIntersections;
 };
 
 class LineSeries;
@@ -73,7 +84,7 @@ class Methods {
 public:
     explicit Methods(SeriesType *ptr, ZoomAndScroll *m_chartView);
 
-    ~Methods();
+    virtual ~Methods();
 
 protected:
     struct TooltipData {
@@ -99,7 +110,7 @@ protected:
                                        const QPointF &lineStart,
                                        const QPointF &lineEnd);
 
-    [[nodiscard]] QList<Intercerp> findIntersection(QPointF mouse) const;
+    virtual QList<Intercerp> findIntersection(const QPointF &mouse);
 
     void handleTooltipOnFocus(const QPointF &chartPos, const QMouseEvent *event);
 
@@ -128,14 +139,16 @@ class LineSeries final : public QLineSeries, public Methods<LineSeries> {
 public:
     explicit LineSeries(ZoomAndScroll *chartView, QObject *parent = nullptr);
 
-    ZoomAndScroll *m_chartView;
-
 public slots:
     void hideAll();
 
+private slots:
     void onMouseMoved(QPointF mousePos,
                       const QMouseEvent *event,
                       QVector<qreal> &limits);
+
+private:
+    ZoomAndScroll *m_chartView;
 };
 
 class ScatterSeries final : public QScatterSeries, public Methods<ScatterSeries> {
@@ -144,14 +157,16 @@ class ScatterSeries final : public QScatterSeries, public Methods<ScatterSeries>
 public:
     explicit ScatterSeries(ZoomAndScroll *chartView, QObject *parent = nullptr);
 
-    ZoomAndScroll *m_chartView;
-
 public slots:
     void hideAll();
 
+private slots:
     void onMouseMoved(QPointF mousePos,
                       const QMouseEvent *event,
                       QVector<qreal> &limits);
+
+private:
+    ZoomAndScroll *m_chartView;
 };
 
 class SplineSeries final : public QSplineSeries, public Methods<SplineSeries> {
@@ -160,13 +175,38 @@ class SplineSeries final : public QSplineSeries, public Methods<SplineSeries> {
 public:
     explicit SplineSeries(ZoomAndScroll *chartView, QObject *parent = nullptr);
 
-    ZoomAndScroll *m_chartView;
-
 public slots:
     void hideAll();
 
+private slots:
     void onMouseMoved(QPointF mousePos,
                       const QMouseEvent *event,
                       QVector<qreal> &limits);
+
+private:
+    ZoomAndScroll *m_chartView;
+
+    QList<Intercerp> findIntersection(const QPointF &mouse) override;
+
+    static constexpr qreal T = 1; // Catmull-Rom tension parameter
+
+    static QPointF catmullRomInterpolate(const qreal t,
+                                         const QPointF &p0,
+                                         const QPointF &p1,
+                                         const QPointF &p2,
+                                         const QPointF &p3) {
+        const qreal t2 = t * t;
+        const qreal t3 = t2 * t;
+
+        const qreal h1 = -T * t3 + 2 * T * t2 - T * t;
+        const qreal h2 = (2 - T) * t3 + (T - 3) * t2 + 1;
+        const qreal h3 = (T - 2) * t3 + (3 - 2 * T) * t2 + T * t;
+        const qreal h4 = T * t3 - T * t2;
+
+        return {
+            h1 * p0.x() + h2 * p1.x() + h3 * p2.x() + h4 * p3.x(),
+            h1 * p0.y() + h2 * p1.y() + h3 * p2.y() + h4 * p3.y()
+        };
+    }
 };
 #endif

@@ -1,14 +1,15 @@
 #include <QScopedPointer>
+#include <iostream>
 
 #include "CustomEvents.h"
 
 ZoomAndScroll::ZoomAndScroll(QChart *chart, QWidget *parent)
     : QChartView(chart, parent)
+      , resizeZoom(false)
+      , rubberBandItem(nullptr)
       , toggleState(false)
       , toggleFocus(false)
-      , toggleLines(false)
-      , resizeZoom(false)
-      , rubberBandItem(nullptr) {
+      , toggleLines(false) {
     setMouseTracking(true); // Enable mouse tracking (runs once)
     minX = std::numeric_limits<qreal>::max();;
     maxX = std::numeric_limits<qreal>::lowest();
@@ -98,8 +99,8 @@ void ZoomAndScroll::mousePressEvent(QMouseEvent *event) {
     } else if (event->button() == Qt::RightButton) {
         // Change to panning by drag
         event->accept();
-        lastMousePos = event->pos(); // Update last mouse position
-        setDragMode(QGraphicsView::ScrollHandDrag);
+        lastMousePos = event->pos();
+        setDragMode(ScrollHandDrag);
         setCursor(Qt::ClosedHandCursor);
     }
     rangeUpdate();
@@ -107,7 +108,7 @@ void ZoomAndScroll::mousePressEvent(QMouseEvent *event) {
 
 void ZoomAndScroll::clearRubberBand() {
     if (rubberBandItem) {
-        rubberBandItem.reset(); // Automatic deletion
+        rubberBandItem.reset();
     }
 }
 
@@ -121,11 +122,11 @@ void ZoomAndScroll::mouseReleaseEvent(QMouseEvent *event) {
             chart()->zoomIn(rubberBandRect);
         }
 
-        clearRubberBand(); // Remove rubber band
+        clearRubberBand();
     }
 
     if (event->button() == Qt::RightButton) {
-        setDragMode(QGraphicsView::NoDrag);
+        setDragMode(NoDrag);
         setCursor(Qt::ArrowCursor); // Reset cursor to default
     }
     rangeUpdate();
@@ -137,7 +138,7 @@ void ZoomAndScroll::mouseDoubleClickEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
         // -----------------
         if (toggleState) {
-            emit hide_when_move();
+            emit hideWhenMove();
         }
         // -----------------
         resetChartToOriginal();
@@ -147,7 +148,7 @@ void ZoomAndScroll::mouseDoubleClickEvent(QMouseEvent *event) {
 
 void ZoomAndScroll::wheelEvent(QWheelEvent *event) {
     if (toggleState) {
-        emit hide_when_move();
+        emit hideWhenMove();
     }
     // -----------------
     const QRectF plotArea = chart()->plotArea();
@@ -223,11 +224,21 @@ void ZoomAndScroll::wheelEvent(QWheelEvent *event) {
 }
 
 void ZoomAndScroll::mouseMoveEvent(QMouseEvent *event) {
+    static auto lastEventTime = std::chrono::steady_clock::now();
+    const auto currentTime = std::chrono::steady_clock::now();
+
+    if (std::chrono::duration_cast<std::chrono::milliseconds>
+        (currentTime - lastEventTime).count() < 16) {
+        event->accept();
+        return;
+    }
+    lastEventTime = currentTime;
+
     rangeUpdate();
     if (rubberBandItem) {
         // -----------------
         if (toggleState) {
-            emit hide_when_move();
+            emit hideWhenMove();
         }
         // -----------------
         // Set the area to zoom
@@ -268,7 +279,7 @@ void ZoomAndScroll::mouseMoveEvent(QMouseEvent *event) {
         event->accept();
     }
 
-    lastMousePos = event->pos(); // Update last mouse position
+    lastMousePos = event->pos();
 
     const QPointF mousePos = mapToScene(event->pos());
     // Mouse position as emitted signal
@@ -276,6 +287,38 @@ void ZoomAndScroll::mouseMoveEvent(QMouseEvent *event) {
     if (!rubberBandItem) {
         emit mouseMoved(mousePos, event, limits);
     }
+}
+
+void ZoomAndScroll::updateIntersections(QXYSeries *series, const QPointF &point) {
+    // Removal old intersection point for each series, if it exists
+    for (auto it = currentIntersections.begin(); it != currentIntersections.end();) {
+        if (it->series == series) {
+            it = currentIntersections.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    // Adding a new intersection point
+    currentIntersections.append({series, point});
+}
+
+QXYSeries *ZoomAndScroll::findBottomSeries() const {
+    if (currentIntersections.isEmpty()) {
+        return nullptr;
+    }
+
+    // Find series with the lowest Y-axis value
+    QXYSeries *bottomSeries = currentIntersections.first().series;
+    qreal lowestY = currentIntersections.first().point.y();
+
+    for (const auto &[series, point]: currentIntersections) {
+        if (point.y() < lowestY) {
+            lowestY = point.y();
+            bottomSeries = series;
+        }
+    }
+    return bottomSeries;
 }
 
 // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -287,18 +330,27 @@ LineSeries::LineSeries(ZoomAndScroll *chartView, QObject *parent)
     connect(m_chartView,
             &ZoomAndScroll::mouseMoved,
             this,
-            &LineSeries::onMouseMoved);
+            &LineSeries::onMouseMoved,
+            Qt::DirectConnection);
     // Signal/slot for tracking's hiding effect during mouse events
     connect(m_chartView,
-            &ZoomAndScroll::hide_when_move,
+            &ZoomAndScroll::hideWhenMove,
             this,
-            &LineSeries::hideAll);
-    // Signal/slot to manage the timed hiding of labels
+            &LineSeries::hideAll,
+            Qt::DirectConnection);
+    // Signal/slot to manage the timed hiding of lines/labels/bullets
     tooltipTimer = new QTimer(this);
-    connect(tooltipTimer, &QTimer::timeout, this, &LineSeries::hideAll);
+    connect(tooltipTimer,
+            &QTimer::timeout,
+            this,
+            &LineSeries::hideAll,
+            Qt::DirectConnection);
 }
 
 void LineSeries::hideAll() {
+    if (!m_chartView->currentIntersections.isEmpty()) {
+        m_chartView->currentIntersections.clear();
+    }
     if (!lines.isEmpty()) {
         lines[0]->hide();
         lines[1]->hide();
@@ -339,18 +391,27 @@ ScatterSeries::ScatterSeries(ZoomAndScroll *chartView, QObject *parent)
     connect(m_chartView,
             &ZoomAndScroll::mouseMoved,
             this,
-            &ScatterSeries::onMouseMoved);
+            &ScatterSeries::onMouseMoved,
+            Qt::DirectConnection);
     // Signal/slot for tracking's hiding effect during mouse events
     connect(m_chartView,
-            &ZoomAndScroll::hide_when_move,
+            &ZoomAndScroll::hideWhenMove,
             this,
-            &ScatterSeries::hideAll);
+            &ScatterSeries::hideAll,
+            Qt::DirectConnection);
     // Signal/slot to manage the timed hiding of labels
     tooltipTimer = new QTimer(this);
-    connect(tooltipTimer, &QTimer::timeout, this, &ScatterSeries::hideAll);
+    connect(tooltipTimer,
+            &QTimer::timeout,
+            this,
+            &ScatterSeries::hideAll,
+            Qt::DirectConnection);
 }
 
 void ScatterSeries::hideAll() {
+    if (!m_chartView->currentIntersections.isEmpty()) {
+        m_chartView->currentIntersections.clear();
+    }
     if (!lines.isEmpty()) {
         lines[0]->hide();
         lines[1]->hide();
@@ -391,18 +452,26 @@ SplineSeries::SplineSeries(ZoomAndScroll *chartView, QObject *parent)
     connect(m_chartView,
             &ZoomAndScroll::mouseMoved,
             this,
-            &SplineSeries::onMouseMoved);
+            &SplineSeries::onMouseMoved,
+            Qt::DirectConnection);
     // Signal/slot for tracking's hiding effect during mouse events
     connect(m_chartView,
-            &ZoomAndScroll::hide_when_move,
+            &ZoomAndScroll::hideWhenMove,
             this,
-            &SplineSeries::hideAll);
+            &SplineSeries::hideAll,
+            Qt::DirectConnection);
     // Signal/slot to manage the timed hiding of labels
     tooltipTimer = new QTimer(this);
-    connect(tooltipTimer, &QTimer::timeout, this, &SplineSeries::hideAll);
+    connect(tooltipTimer,
+            &QTimer::timeout,
+            this, &SplineSeries::hideAll,
+            Qt::DirectConnection);
 }
 
 void SplineSeries::hideAll() {
+    if (!m_chartView->currentIntersections.isEmpty()) {
+        m_chartView->currentIntersections.clear();
+    }
     if (!lines.isEmpty()) {
         lines[0]->hide();
         lines[1]->hide();
@@ -474,7 +543,11 @@ template<typename SeriesType>
 void Methods<SeriesType>::handleTooltipOnFocus(const QPointF &chartPos, const QMouseEvent *event) {
     QList<Intercerp> intersectionVector = findIntersection(chartPos);
     // The Tooltip is displayed only if it is within a threshold distance
-    if (intersectionVector[0].distance < 0.5) {
+    // Get the X axis range for normalization
+    qreal xRange = m_chartView->maxX - m_chartView->minX;
+    qreal relativeThreshold = 0.001; // 0.1% of the total range
+
+    if (intersectionVector[0].distance / xRange < relativeThreshold) {
         if (!intersectionVector[0].pos.isNull()) {
             const QString tooltipText = QString("X: %1, Y: %2")
                     .arg(intersectionVector[0].pos.x(), 0, 'f', 2)
@@ -484,66 +557,145 @@ void Methods<SeriesType>::handleTooltipOnFocus(const QPointF &chartPos, const QM
             tooltipTimer->start(1000); // Tooltip stays for 1000 ms (1 second)
         }
     } else {
-        QToolTip::hideText(); // Hides previous tooltip immediately
+        QToolTip::hideText(); // Hides the previous tooltip immediately
     }
 }
 
 template<typename SeriesType>
 QList<typename Methods<SeriesType>::Intercerp>
-Methods<SeriesType>::findIntersection(const QPointF mouse) const {
+Methods<SeriesType>::findIntersection(const QPointF &mouse) {
     const auto *series = qobject_cast<SeriesType *>(ptr);
+    // Check if there are enough points
     if (!series || series->count() < 2) {
-        return {}; // Return an empty list if no series or not enough points
+        return {};
     }
 
-    constexpr qreal adjpoints = 2.0; // Number of adjacent points
-    int startIdx = 0;
-    int endIdx = series->count() - 1;
-    // Binary search for the closest index to the right of x, and gives a starting index
-    while (startIdx < endIdx) {
-        int midIdx = (startIdx + endIdx) / 2;
-        if (series->at(midIdx).x() < mouse.x()) {
-            startIdx = midIdx + 1;
+    // Cache used values
+    const qreal mouseX = mouse.x();
+    const auto points = series->points();
+    const int pointCount = points.size();
+
+    // Binary search to find the closest index point
+    int left = 0;
+    int right = pointCount - 1;
+    //
+    while (left < right) {
+        const int mid = left + (right - left) / 2;
+        if (points[mid].x() < mouseX) {
+            left = mid + 1;
         } else {
-            endIdx = midIdx;
+            right = mid;
         }
     }
-    // Search Interval is limited to a small number of neighboring points around x-coordinate
-    const int closestIndex = startIdx;
-    int searchStartIndex = std::max(0, closestIndex - 1);
-    int searchEndIndex = std::min(series->count() - 1, closestIndex + 1);
 
-    // Expand the search interval according to adjacent points number (adjpoints)
-    while (searchStartIndex > 0 &&
-           series->at(searchStartIndex - 1).x() >= mouse.x() - adjpoints) {
-        --searchStartIndex;
-    }
-    while (searchEndIndex < series->count() - 1 &&
-           series->at(searchEndIndex + 1).x() <= mouse.x() + adjpoints) {
-        ++searchEndIndex;
+    // Check having a valid segment
+    const int idx = std::max(0, left - 1);
+    if (idx + 1 >= pointCount) {
+        return {};
     }
 
-    // Linear Interpolation provides a precise intersection point between the two data points
-    QList<Intercerp> points;
+    // Get segment points
+    const QPointF &p1 = points[idx];
+    const QPointF &p2 = points[idx + 1];
 
-    // Check the line segments within the limited range
-    for (int i = searchStartIndex; i < searchEndIndex; ++i) {
-        QPointF p1 = series->at(i);
-        QPointF p2 = series->at(i + 1);
+    // Quick bounds check
+    const qreal minX = std::min(p1.x(), p2.x());
+    const qreal maxX = std::max(p1.x(), p2.x());
 
-        // Check if x is within the bounds of p1 and p2
-        if ((mouse.x() >= p1.x() && mouse.x() <= p2.x()) ||
-            (mouse.x() <= p1.x() && mouse.x() >= p2.x())) {
-            // Linear interpolation to find the corresponding y value
-            const qreal y = p1.y() + (mouse.x() - p1.x()) * (p2.y() - p1.y()) / (p2.x() - p1.x());
-            if (m_chartView->toggleFocus) {
-                const qreal distance = distanceToLineSegment(mouse, p1, p2);
-                points.append({distance, p1});
-            } else {
-                points.append({0, QPointF(mouse.x(), y)});
-            }
-            return points; // Return found intersection
+    if (mouseX < minX || mouseX > maxX) {
+        return {};
+    }
+
+    QList<Intercerp> result;
+    result.reserve(1);
+
+    // Calculate linear interpolation
+    const qreal dx = p2.x() - p1.x();
+    // Check division by zero
+    if (std::abs(dx) > std::numeric_limits<qreal>::epsilon()) {
+        const qreal t = (mouseX - p1.x()) / dx;
+        if (m_chartView->toggleFocus) {
+            // Only calculate distance if needed
+            const qreal distance = distanceToLineSegment(mouse, p1, p2);
+            result.append({distance, QPointF(mouseX, p1.y() + t * (p2.y() - p1.y()))});
+        } else {
+            result.append({0, QPointF(mouseX, p1.y() + t * (p2.y() - p1.y()))});
         }
+        return result; // Return found intersection
+    }
+    // Return an empty list if no intersection found
+    return {};
+}
+
+QList<Methods<SplineSeries>::Intercerp>
+SplineSeries::findIntersection(const QPointF &mouse) {
+    // Check if there are enough points
+    if (count() < 2) {
+        return {};
+    }
+
+    // Binary search to find the closest index point
+    const qreal mouseX = mouse.x();
+    int left = 0;
+    int right = count() - 1;
+    //
+    while (left < right) {
+        const int mid = left + (right - left) / 2;
+        if (at(mid).x() < mouseX) {
+            left = mid + 1;
+        } else {
+            right = mid;
+        }
+    }
+
+    // Check having a valid segment
+    const int idx = std::max(0, left - 1);
+    if (idx + 1 >= count()) {
+        return {};
+    }
+
+    // Get segment points
+    const QPointF &p1 = at(idx);
+    const QPointF &p2 = at(idx + 1);
+
+    // Quick bounds check
+    const qreal minX = std::min(p1.x(), p2.x());
+    const qreal maxX = std::max(p1.x(), p2.x());
+
+    if (mouseX < minX || mouseX > maxX) {
+        return {};
+    }
+
+    QList<Intercerp> result;
+    result.reserve(1);
+
+    // Calculate interpolation
+    const qreal dx = p2.x() - p1.x();
+    // Check division by zero
+    if (std::abs(dx) > std::numeric_limits<qreal>::epsilon()) {
+        QPointF interpolated;
+        const qreal t = (mouse.x() - p1.x()) / dx;
+        // Use Catmull-Rom if there are enough points
+        if (idx > 0 && idx < count() - 2) {
+            const QPointF &p0 = at(idx - 1);
+            const QPointF &p3 = at(idx + 2);
+            interpolated = catmullRomInterpolate(t, p0, p1, p2, p3);
+        } else {
+            // Fall back to linear interpolation for edge segments
+            interpolated = QPointF(
+                mouse.x(),
+                p1.y() + t * (p2.y() - p1.y())
+            );
+        }
+
+        if (m_chartView->toggleFocus) {
+            // Only calculate distance if needed
+            const qreal distance = distanceToLineSegment(mouse, p1, interpolated);
+            result.append({distance, interpolated});
+        } else {
+            result.append({0, QPointF(mouse.x(), interpolated.y())});
+        }
+        return result; // Return found intersection
     }
     // Return an empty list if no intersection found
     return {};
@@ -554,25 +706,32 @@ template<typename SeriesType>
 qreal Methods<SeriesType>::distanceToLineSegment(const QPointF &point,
                                                  const QPointF &lineStart,
                                                  const QPointF &lineEnd) {
+    // Cache coordinate differences
     const qreal dx = lineEnd.x() - lineStart.x();
     const qreal dy = lineEnd.y() - lineStart.y();
-    if ((dx == 0) && (dy == 0)) {
-        // Special case: the segment is a point
-        return QLineF(point, lineStart).length();
+
+    // Check for a degenerate case (point segment)
+    const qreal lengthSquared = dx * dx + dy * dy;
+    if (lengthSquared < std::numeric_limits<qreal>::epsilon()) {
+        // Point-to-point distance calculation
+        const qreal px = point.x() - lineStart.x();
+        const qreal py = point.y() - lineStart.y();
+        return std::sqrt(px * px + py * py);
     }
 
-    // Calculate the projection of the point onto the line segment
-    const qreal t = ((point.x() - lineStart.x()) * dx + (point.y() - lineStart.y()) * dy) /
-                    (dx * dx + dy * dy);
+    // Calculate projection parameter
+    const qreal px = point.x() - lineStart.x();
+    const qreal py = point.y() - lineStart.y();
+    const qreal t = std::clamp((px * dx + py * dy) / lengthSquared, 0.0, 1.0);
 
-    if (t < 0)
-        return QLineF(point, lineStart).length(); // Closest to lineStart
-    if (t > 1)
-        return QLineF(point, lineEnd).length(); // Closest to lineEnd
+    // Calculate the closest point on a line segment
+    const qreal projX = lineStart.x() + t * dx;
+    const qreal projY = lineStart.y() + t * dy;
 
-    // Find the point on the line segment
-    const auto projection = QPointF(lineStart.x() + t * dx, lineStart.y() + t * dy);
-    return QLineF(point, projection).length();
+    // Calculate distance
+    const qreal distX = point.x() - projX;
+    const qreal distY = point.y() - projY;
+    return std::sqrt(distX * distX + distY * distY);
 }
 
 // Tracking by line intersection
@@ -588,6 +747,9 @@ void Methods<SeriesType>::handleTooltipForTracking(
     const QPointF IPpixel = m_chartView->chart()->mapToPosition(intersectionPoint);
     if (!intersectionPoint.isNull() && intersectionPoint.y() <= limits[3] &&
         intersectionPoint.y() >= limits[2]) {
+        // Storing intersection point for further comparison
+        m_chartView->updateIntersections(qobject_cast<QXYSeries *>(ptr), intersectionPoint);
+        //
         updateVerticalLine(mousePos, IPpixel, limits); // Draw tracking lines
         setTooltips(intersectionPoint, IPpixel); // Creates the labels
         drawBullet(intersectionPoint); // Draw the bullet at the intersection
@@ -598,9 +760,7 @@ void Methods<SeriesType>::handleTooltipForTracking(
 
 template<typename SeriesType>
 void Methods<SeriesType>::createLines(int n) {
-    // Resize the QList to hold n track-lines
     lines.resize(n);
-
     // Populate the list with pointers
     std::generate_n(lines.begin(), n, []() {
         return new QGraphicsLineItem();
@@ -611,6 +771,9 @@ template<typename SeriesType>
 void Methods<SeriesType>::updateVerticalLine(
     // Update track-lines position
     const QPointF &mousePos, const QPointF &IPpixel, QVector<qreal> &limits) {
+    if (!m_chartView) return;
+    m_chartView->setViewportUpdateMode(QGraphicsView::NoViewportUpdate);
+    // --------
     QPointF chartPos = m_chartView->chart()->mapToValue(mousePos);
     if (chartPos.x() >= limits[0] && chartPos.x() <= limits[1] && chartPos.y() >= limits[2] &&
         chartPos.y() <= limits[3]) {
@@ -627,8 +790,25 @@ void Methods<SeriesType>::updateVerticalLine(
 
         // Track-line type switch: Crosshair | truncated
         if (m_chartView->toggleLines) {
-            lines[0]->setLine(mousePos.x(), IPpixel.y(), mousePos.x(), m_chartView->chart()->plotArea().top());
-            lines[1]->setLine(m_chartView->chart()->plotArea().left(), IPpixel.y(), IPpixel.x(), IPpixel.y());
+            // Only show vertical track line belonging to the bottom-most placed series
+            auto currentSeries = qobject_cast<QXYSeries *>(ptr);
+            auto bottomSeries = m_chartView->findBottomSeries();
+            //
+            if (bottomSeries == currentSeries) {
+                lines[0]->setLine(mousePos.x(),
+                                  IPpixel.y(),
+                                  mousePos.x(),
+                                  m_chartView->chart()->plotArea().top());
+                lines[0]->show();
+            } else {
+                lines[0]->hide();
+            }
+
+            // Always show the horizontal track line
+            lines[1]->setLine(m_chartView->chart()->plotArea().left(),
+                              IPpixel.y(),
+                              IPpixel.x(),
+                              IPpixel.y());
         } else {
             lines[0]->setLine(mousePos.x(),
                               m_chartView->chart()->plotArea().bottom(),
@@ -641,6 +821,7 @@ void Methods<SeriesType>::updateVerticalLine(
                               IPpixel.y());
         }
     }
+    m_chartView->setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
 }
 
 template<typename SeriesType>
@@ -657,7 +838,7 @@ void Methods<SeriesType>::createTooltips(const QList<TooltipData> &tooltipDataLi
         std::generate_n(shadowEffect.begin() + shadowEffect.size() - n, n, [this]() {
             return new QGraphicsDropShadowEffect(m_chartView);
         });
-        // Set font for each label
+        // Set a font for each label
         for (const auto tip: toolTips) {
             QFont font = tip->font();
             font.setBold(true);
@@ -672,7 +853,7 @@ void Methods<SeriesType>::createTooltips(const QList<TooltipData> &tooltipDataLi
         }
     }
 
-    for (int i = 0; i < n; ++i) {
+    for (qsizetype i = 0; i < n; ++i) {
         const auto &[text, position, color] = tooltipDataList[i];
 
         // Palette setup
@@ -704,7 +885,9 @@ template<typename SeriesType>
 void Methods<SeriesType>::setTooltips(const QPointF &intersectionPoint, const QPointF &IPpixel) {
     // Cast IPpixel to QPoint
     const QPoint IPcd(static_cast<int>(IPpixel.x()), static_cast<int>(IPpixel.y()));
-
+    //
+    QList<TooltipData> tooltipDataList;
+    // Create data for tooltips
     const auto IP = QPoint(IPcd.x() + 5, IPcd.y() + 5);
     const auto xLabel = QPoint(IPcd.x(), static_cast<int>(m_chartView->chart()->plotArea().top()) - 25);
     const auto yLabel = QPoint(static_cast<int>(m_chartView->chart()->plotArea().left()) - 60, IPcd.y());
@@ -717,11 +900,8 @@ void Methods<SeriesType>::setTooltips(const QPointF &intersectionPoint, const QP
     // y axis label text
     const QString tooltipTexty = QString("Y: %1").arg(intersectionPoint.y(), 0, 'f', 2);
 
-    // Create data for tooltips
-    QList<TooltipData> tooltipDataList;
-
     const auto *series = qobject_cast<SeriesType *>(ptr);
-    const QColor colorSerie = series->pen().color(); // Get the color from the series
+    const QColor colorSerie = series->pen().color();
 
     //------- x custom tooltip
     tooltipDataList.append({tooltipTextx, xLabel, Qt::black});
@@ -737,7 +917,7 @@ void Methods<SeriesType>::setTooltips(const QPointF &intersectionPoint, const QP
 
 template<typename SeriesType>
 void Methods<SeriesType>::drawBullet(const QPointF &point) {
-    // Remove existing intersection bullet symbol
+    // Remove the existing intersection bullet symbol
     if (bullet) {
         m_chartView->chart()->scene()->removeItem(bullet);
         delete bullet;
