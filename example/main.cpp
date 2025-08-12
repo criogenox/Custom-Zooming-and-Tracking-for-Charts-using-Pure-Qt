@@ -1,10 +1,10 @@
 #include <QApplication>
 
-#include "TestWindow.h"
+#include "testWindow.h"
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
-    TestWindow window;
+    testWindow window;
     // window.resize(800, 600);
     window.showMaximized();
     return QApplication::exec();

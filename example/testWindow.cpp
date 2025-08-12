@@ -1,8 +1,8 @@
 #include <QVBoxLayout>
-#include "TestWindow.h"
-#include "CustomEvents.h"
+#include "testWindow.h"
+#include "customEvents.h"
 
-TestWindow::TestWindow(QWidget *parent)
+testWindow::testWindow(QWidget *parent)
     : QMainWindow(parent) {
     //#######################
     auto *chart = new QChart();
@@ -15,19 +15,19 @@ TestWindow::TestWindow(QWidget *parent)
     //*******************************************
     int maxPoints = 1000;
     //  Series of random data
-    for (int i = 0; i < maxPoints; ++i) {
+    for (int i = -500; i < maxPoints; ++i) {
         qreal yValue = rand() % 6;
         qreal j = 2 * i;
         qreal _yValue = 0.9 * yValue;
         series1->append(j, _yValue);
     }
-    for (int i = 0; i < maxPoints; ++i) {
+    for (int i = -500; i < maxPoints; ++i) {
         qreal yValue = rand() % 4 + 15;
         qreal j = 2 * i;
         qreal _yValue = 0.7 * yValue;
         series2->append(j, _yValue);
     }
-    for (int i = 0; i < maxPoints; ++i) {
+    for (int i = -500; i < maxPoints; ++i) {
         qreal yValue = rand() % 8 + 30;
         qreal j = 2 * i;
         qreal _yValue = 0.7 * yValue;
@@ -36,10 +36,9 @@ TestWindow::TestWindow(QWidget *parent)
     chart->addSeries(series1);
     chart->addSeries(series2);
     chart->addSeries(series3);
+
     // Setting global chart limits
     chartView->updateXLimits(chart);
-
-    //#######################
 
     // Series setting
     // -------------
@@ -69,11 +68,9 @@ TestWindow::TestWindow(QWidget *parent)
     series3->setPointLabelsFormat("@xPoint, @yPoint");
     series3->setName("Predicted vibrations");
 
-    //#######################
-
     // Chart axes setting
     chart->createDefaultAxes();
-    QColor axisColor(200, 200, 200); // Color (axes & grid lines)
+    constexpr QColor axisColor(200, 200, 200); // Color (axes & grid lines)
     // Axes labeling
     std::pair<Qt::Orientation, QString> axesInfo[] = {
         {Qt::Horizontal, "Time [seconds]"},
@@ -81,7 +78,7 @@ TestWindow::TestWindow(QWidget *parent)
     };
 
     for (const auto &[fst, snd]: axesInfo) {
-        Qt::Orientation orientation = fst;
+        const Qt::Orientation orientation = fst;
         QString title = snd;
 
         auto axes = chart->axes(orientation);
