@@ -1,5 +1,6 @@
 #ifndef TESTWINDOW_H
 #define TESTWINDOW_H
+
 #pragma once
 
 #include <QMainWindow>

@@ -4,7 +4,6 @@
 
 testWindow::testWindow(QWidget *parent)
     : QMainWindow(parent) {
-    //#######################
     auto *chart = new QChart();
 
     // Custom classes ***************************
