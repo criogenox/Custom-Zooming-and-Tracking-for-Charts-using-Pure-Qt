@@ -27,7 +27,8 @@ signals:
     void hideWhenMove();
 
 private:
-    bool resizeZoom;
+    bool resizeHorZoom;
+    bool resizeVerZoom;
     QPoint lastMousePos;
     QPoint rubberBandStartPos;
     QScopedPointer<QGraphicsRectItem> rubberBandItem;
@@ -61,10 +62,10 @@ public:
     bool toggleState;
     bool toggleFocus;
     bool toggleLines;
-    qreal minX;
-    qreal maxX;
-    qreal minY;
-    qreal maxY;
+    qreal minX{};
+    qreal maxX{};
+    qreal minY{};
+    qreal maxY{};
 
     void updateXLimits(const QChart *chart);
 

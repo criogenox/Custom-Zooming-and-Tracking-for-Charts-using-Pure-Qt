@@ -1,37 +1,72 @@
 #include <QScopedPointer>
 #include <iostream>
 
-#include "CustomEvents.h"
+#include "customEvents.h"
 
 ZoomAndScroll::ZoomAndScroll(QChart *chart, QWidget *parent)
     : QChartView(chart, parent)
-      , resizeZoom(false)
+      , resizeHorZoom(false)
+      , resizeVerZoom(false)
       , rubberBandItem(nullptr)
       , toggleState(false)
       , toggleFocus(false)
       , toggleLines(false) {
     setMouseTracking(true); // Enable mouse tracking (runs once)
-    minX = std::numeric_limits<qreal>::max();;
-    maxX = std::numeric_limits<qreal>::lowest();
-    minY = std::numeric_limits<qreal>::max();
-    maxY = std::numeric_limits<qreal>::lowest();
 }
 
 void ZoomAndScroll::updateXLimits(const QChart *chart) {
-    // Iteration to find the min/max values
-    for (const auto &series: chart->series()) {
-        if (const auto lineSeries = qobject_cast<QLineSeries *>(series)) {
-            for (const QPointF &point: lineSeries->points()) {
-                minX = qMin(minX, point.x());
-                maxX = qMax(maxX, point.x());
-                minY = qMin(minY, point.y());
-                maxY = qMax(maxY, point.y());
+    if (!chart->series().isEmpty()) {
+        qreal xMin = std::numeric_limits<qreal>::infinity();
+        qreal xMax = -std::numeric_limits<qreal>::infinity();
+        qreal yMin = std::numeric_limits<qreal>::infinity();
+        qreal yMax = -std::numeric_limits<qreal>::infinity();
+        bool hasData = false;
+
+        for (QAbstractSeries *s: chart->series()) {
+            const auto *xy = qobject_cast<QXYSeries *>(s);
+            if (!xy || !xy->isVisible())
+                continue;
+
+            const auto pts = xy->points();
+            if (pts.isEmpty())
+                continue;
+
+            for (const QPointF &p: pts) {
+                if (!std::isfinite(p.x()) || !std::isfinite(p.y()))
+                    continue;
+                hasData = true;
+                xMin = std::min(xMin, p.x());
+                xMax = std::max(xMax, p.x());
+                yMin = std::min(yMin, p.y());
+                yMax = std::max(yMax, p.y());
             }
         }
+
+        if (!hasData) {
+            minX = maxX = 0;
+            minY = maxY = 0;
+            return;
+        }
+
+        auto expandIfFlat = [](qreal &a, qreal &b) {
+            if (qFuzzyCompare(a, b)) {
+                const qreal eps = std::max<qreal>(1e-6, std::abs(a) * 0.05);
+                a -= eps;
+                b += eps;
+            }
+        };
+        expandIfFlat(xMin, xMax);
+        expandIfFlat(yMin, yMax);
+
+        const qreal yPad = (yMax - yMin) * 0.10; // 10% padding of the y range
+        yMin -= yPad;
+        yMax += yPad;
+
+        minX = xMin;
+        maxX = xMax;
+        minY = yMin;
+        maxY = yMax;
     }
-    const qreal factor = 0.1 * maxY;
-    maxY += factor;
-    minY -= factor;
 }
 
 void ZoomAndScroll::rangeUpdate() {
@@ -82,28 +117,39 @@ void ZoomAndScroll::keyPressEvent(QKeyEvent *event) {
         toggleFocus = !toggleFocus; // Tooltips on cursor hover
     }
     if (event->key() == Qt::Key_R) {
-        resizeZoom = !resizeZoom; // Horizontal panning (axis clipping)
+        resizeHorZoom = !resizeHorZoom; // Horizontal panning (x axis clipping)
+        if (resizeVerZoom) {
+            resizeVerZoom = !resizeVerZoom; // One axis clipping at a time
+        }
+    }
+    if (event->key() == Qt::Key_E) {
+        resizeVerZoom = !resizeVerZoom; // Vertical panning (y axis clipping)
+        if (resizeHorZoom) {
+            resizeHorZoom = !resizeHorZoom; // One axis clipping at a time
+        }
     }
 }
 
 void ZoomAndScroll::mousePressEvent(QMouseEvent *event) {
-    // Zoom-in by drag/selection rubber band area
-    if (event->button() == Qt::LeftButton) {
-        event->accept();
-        rubberBandStartPos = event->pos();
-        // rubberBandItem as QScopedPointer
-        rubberBandItem.reset(new QGraphicsRectItem());
-        rubberBandItem->setPen(QPen(Qt::DashLine));
-        rubberBandItem->setBrush(QBrush(QColor(255, 255, 102, 50))); // Semi-transparent red
-        chart()->scene()->addItem(rubberBandItem.data());
-    } else if (event->button() == Qt::RightButton) {
-        // Change to panning by drag
-        event->accept();
-        lastMousePos = event->pos();
-        setDragMode(ScrollHandDrag);
-        setCursor(Qt::ClosedHandCursor);
+    if (!chart() || !chart()->series().isEmpty()) {
+        // Zoom-in by drag/selection rubber band area
+        if (event->button() == Qt::LeftButton) {
+            event->accept();
+            rubberBandStartPos = event->pos();
+            // rubberBandItem as QScopedPointer
+            rubberBandItem.reset(new QGraphicsRectItem());
+            rubberBandItem->setPen(QPen(Qt::DashLine));
+            rubberBandItem->setBrush(QBrush(QColor(255, 255, 102, 50))); // Semi-transparent red
+            chart()->scene()->addItem(rubberBandItem.data());
+        } else if (event->button() == Qt::RightButton) {
+            // Change to panning by drag
+            event->accept();
+            lastMousePos = event->pos();
+            setDragMode(ScrollHandDrag);
+            setCursor(Qt::ClosedHandCursor);
+        }
+        rangeUpdate();
     }
-    rangeUpdate();
 }
 
 void ZoomAndScroll::clearRubberBand() {
@@ -113,179 +159,196 @@ void ZoomAndScroll::clearRubberBand() {
 }
 
 void ZoomAndScroll::mouseReleaseEvent(QMouseEvent *event) {
-    if (rubberBandItem) {
-        QRectF rubberBandRect(rubberBandStartPos, event->pos());
-        rubberBandRect = rubberBandRect.normalized();
-        QRectF plotArea = chart()->plotArea();
+    if (!chart() || !chart()->series().isEmpty()) {
+        if (rubberBandItem) {
+            QRectF rubberBandRect(rubberBandStartPos, event->pos());
+            rubberBandRect = rubberBandRect.normalized();
+            QRectF plotArea = chart()->plotArea();
 
-        if (rubberBandRect.intersects(plotArea)) {
-            chart()->zoomIn(rubberBandRect);
+            if (rubberBandRect.intersects(plotArea)) {
+                chart()->zoomIn(rubberBandRect);
+            }
+
+            clearRubberBand();
         }
 
-        clearRubberBand();
+        if (event->button() == Qt::RightButton) {
+            setDragMode(NoDrag);
+            setCursor(Qt::ArrowCursor); // Reset cursor to default
+        }
+        rangeUpdate();
     }
-
-    if (event->button() == Qt::RightButton) {
-        setDragMode(NoDrag);
-        setCursor(Qt::ArrowCursor); // Reset cursor to default
-    }
-    rangeUpdate();
 }
 
 void ZoomAndScroll::mouseDoubleClickEvent(QMouseEvent *event) {
-    event->accept();
-    // Double-click to fit the chart with original axes ranges.
-    if (event->button() == Qt::LeftButton) {
-        // -----------------
-        if (toggleState) {
-            emit hideWhenMove();
+    if (!chart() || !chart()->series().isEmpty()) {
+        event->accept();
+        // Double-click to fit the chart with original axes ranges.
+        if (event->button() == Qt::LeftButton) {
+            // -----------------
+            if (toggleState) {
+                emit hideWhenMove();
+            }
+            // -----------------
+            resetChartToOriginal();
         }
-        // -----------------
-        resetChartToOriginal();
+        rangeUpdate();
     }
-    rangeUpdate();
 }
 
 void ZoomAndScroll::wheelEvent(QWheelEvent *event) {
-    if (toggleState) {
-        emit hideWhenMove();
-    }
-    // -----------------
-    const QRectF plotArea = chart()->plotArea();
-
-    // No zoom action if wheel scrolling is made outside the plot area
-    if (event->position().x() < plotArea.x() || event->position().y() < plotArea.y() ||
-        event->position().x() > plotArea.x() + plotArea.width() ||
-        event->position().y() > plotArea.y() + plotArea.height())
-        return;
-
-    const QPointF mousePos = event->position() - plotArea.topLeft();
-    const qreal numDegrees = static_cast<qreal>(event->angleDelta().y()) / 8;
-    const qreal factor = numDegrees > 0 ? 1.2 : 0.8; // Zoom in or out
-
-    auto *xAxis = qobject_cast<QValueAxis *>(chart()->axes()[0]);
-    auto *yAxis = qobject_cast<QValueAxis *>(chart()->axes()[1]);
-
-    if (xAxis && yAxis) {
-        // Get current axes limits
-        const qreal oldMinX = xAxis->min();
-        const qreal oldMaxX = xAxis->max();
-        const qreal oldMinY = yAxis->min();
-        const qreal oldMaxY = yAxis->max();
-
-        const qreal rangeX = oldMaxX - oldMinX;
-        const qreal rangeY = oldMaxY - oldMinY;
-
-        // New axes limits based on mouse position and zoom factor
-        qreal newMinX = mousePos.x() / plotArea.width() * rangeX + oldMinX -
-                        (rangeX / factor) * (mousePos.x() / plotArea.width());
-        qreal newMaxX = mousePos.x() / plotArea.width() * rangeX + oldMinX +
-                        (rangeX / factor) * (1 - mousePos.x() / plotArea.width());
-        const qreal invertedY = plotArea.height() - mousePos.y(); // Invert Y-coordinate
-        qreal newMinY = invertedY / plotArea.height() * rangeY + oldMinY -
-                        (rangeY / factor) * (invertedY / plotArea.height());
-        qreal newMaxY = invertedY / plotArea.height() * rangeY + oldMinY +
-                        (rangeY / factor) * (1 - invertedY / plotArea.height());
-
-        // Clamp new limits to min/max values
-        newMinX = std::max(newMinX, minX);
-        newMaxX = std::min(newMaxX, maxX);
-        newMinY = std::max(newMinY, minY);
-        newMaxY = std::min(newMaxY, maxY);
-
-        // Handle horizontal panning
-        if (resizeZoom) {
-            if (numDegrees > 0) {
-                newMinX = qMax(xMin, newMinX);
-                newMaxX = qMin(xMax, newMaxX);
-            } else {
-                newMinX = qMin(xMin, newMinX);
-                newMaxX = qMax(xMax, newMaxX);
-            }
-            xAxis->setRange(newMinX, newMaxX);
-        } else {
-            if (numDegrees > 0) {
-                newMinX = qMax(xMin, newMinX);
-                newMaxX = qMin(xMax, newMaxX);
-                newMinY = qMax(yMin, newMinY);
-                newMaxY = qMin(yMax, newMaxY);
-            } else {
-                newMinX = qMin(xMin, newMinX);
-                newMaxX = qMax(xMax, newMaxX);
-                newMinY = qMin(yMin, newMinY);
-                newMaxY = qMax(yMax, newMaxY);
-            }
-            xAxis->setRange(newMinX, newMaxX);
-            yAxis->setRange(newMinY, newMaxY);
-        }
-    }
-    event->accept();
-    rangeUpdate();
-}
-
-void ZoomAndScroll::mouseMoveEvent(QMouseEvent *event) {
-    static auto lastEventTime = std::chrono::steady_clock::now();
-    const auto currentTime = std::chrono::steady_clock::now();
-
-    if (std::chrono::duration_cast<std::chrono::milliseconds>
-        (currentTime - lastEventTime).count() < 16) {
-        event->accept();
-        return;
-    }
-    lastEventTime = currentTime;
-
-    rangeUpdate();
-    if (rubberBandItem) {
-        // -----------------
+    if (!chart() || !chart()->series().isEmpty()) {
         if (toggleState) {
             emit hideWhenMove();
         }
         // -----------------
-        // Set the area to zoom
-        QRectF rubberBandRect(rubberBandStartPos, event->pos());
-        rubberBandRect = rubberBandRect.normalized();
-        rubberBandItem->setRect(rubberBandRect);
-    }
+        const QRectF plotArea = chart()->plotArea();
 
-    if (event->buttons() & Qt::RightButton) {
-        qreal deltaX = -(event->pos().x() - lastMousePos.x());
-        qreal deltaY = (event->pos().y() - lastMousePos.y());
-        constexpr qreal sensitivity = 0.8; // Panning sensitivity factor
-        deltaX *= sensitivity;
-        deltaY *= sensitivity;
+        // No zoom action if wheel scrolling is made outside the plot area
+        if (event->position().x() < plotArea.x() || event->position().y() < plotArea.y() ||
+            event->position().x() > plotArea.x() + plotArea.width() ||
+            event->position().y() > plotArea.y() + plotArea.height())
+            return;
 
-        if (std::signbit(deltaX)) {
-            if (xMin <= minX) {
-                deltaX = 0.00;
-            }
-        }
-        if (!std::signbit(deltaX)) {
-            if (xMax >= maxX) {
-                deltaX = 0.00;
-            }
-        }
+        const QPointF mousePos = event->position() - plotArea.topLeft();
+        const qreal numDegrees = static_cast<qreal>(event->angleDelta().y()) / 8;
+        const qreal factor = numDegrees > 0 ? 1.2 : 0.8; // Zoom in or out
 
-        if (std::signbit(deltaY)) {
-            if (yMin <= minY) {
-                deltaY = 0.00;
+        auto *xAxis = qobject_cast<QValueAxis *>(chart()->axes()[0]);
+        auto *yAxis = qobject_cast<QValueAxis *>(chart()->axes()[1]);
+
+        if (xAxis && yAxis) {
+            // Get current axes limits
+            const qreal oldMinX = xAxis->min();
+            const qreal oldMaxX = xAxis->max();
+            const qreal oldMinY = yAxis->min();
+            const qreal oldMaxY = yAxis->max();
+
+            const qreal rangeX = oldMaxX - oldMinX;
+            const qreal rangeY = oldMaxY - oldMinY;
+
+            // New axes limits based on mouse position and zoom factor
+            qreal newMinX = mousePos.x() / plotArea.width() * rangeX + oldMinX -
+                            (rangeX / factor) * (mousePos.x() / plotArea.width());
+            qreal newMaxX = mousePos.x() / plotArea.width() * rangeX + oldMinX +
+                            (rangeX / factor) * (1 - mousePos.x() / plotArea.width());
+            const qreal invertedY = plotArea.height() - mousePos.y(); // Invert Y-coordinate
+            qreal newMinY = invertedY / plotArea.height() * rangeY + oldMinY -
+                            (rangeY / factor) * (invertedY / plotArea.height());
+            qreal newMaxY = invertedY / plotArea.height() * rangeY + oldMinY +
+                            (rangeY / factor) * (1 - invertedY / plotArea.height());
+
+            // Clamp new limits to min/max values
+            newMinX = std::max(newMinX, minX);
+            newMaxX = std::min(newMaxX, maxX);
+            newMinY = std::max(newMinY, minY);
+            newMaxY = std::min(newMaxY, maxY);
+
+            // Handle horizontal panning
+            if (resizeHorZoom) {
+                if (numDegrees > 0) {
+                    newMinX = qMax(xMin, newMinX);
+                    newMaxX = qMin(xMax, newMaxX);
+                } else {
+                    newMinX = qMin(xMin, newMinX);
+                    newMaxX = qMax(xMax, newMaxX);
+                }
+                xAxis->setRange(newMinX, newMaxX);
+            } else if (resizeVerZoom) {
+                if (numDegrees > 0) {
+                    newMinY = qMax(yMin, newMinY);
+                    newMaxY = qMin(yMax, newMaxY);
+                } else {
+                    newMinY = qMin(yMin, newMinY);
+                    newMaxY = qMax(yMax, newMaxY);
+                }
+                yAxis->setRange(newMinY, newMaxY);
+            } else {
+                if (numDegrees > 0) {
+                    newMinX = qMax(xMin, newMinX);
+                    newMaxX = qMin(xMax, newMaxX);
+                    newMinY = qMax(yMin, newMinY);
+                    newMaxY = qMin(yMax, newMaxY);
+                } else {
+                    newMinX = qMin(xMin, newMinX);
+                    newMaxX = qMax(xMax, newMaxX);
+                    newMinY = qMin(yMin, newMinY);
+                    newMaxY = qMax(yMax, newMaxY);
+                }
+                xAxis->setRange(newMinX, newMaxX);
+                yAxis->setRange(newMinY, newMaxY);
             }
         }
-        if (!std::signbit(deltaY)) {
-            if (yMax >= maxY) {
-                deltaY = 0.00;
-            }
-        }
-        chart()->scroll(deltaX, deltaY);
         event->accept();
+        rangeUpdate();
     }
+}
 
-    lastMousePos = event->pos();
+void ZoomAndScroll::mouseMoveEvent(QMouseEvent *event) {
+    if (!chart() || !chart()->series().isEmpty()) {
+        static auto lastEventTime = std::chrono::steady_clock::now();
+        const auto currentTime = std::chrono::steady_clock::now();
 
-    const QPointF mousePos = mapToScene(event->pos());
-    // Mouse position as emitted signal
-    QVector<qreal> limits{xMin, xMax, yMin, yMax};
-    if (!rubberBandItem) {
-        emit mouseMoved(mousePos, event, limits);
+        if (std::chrono::duration_cast<std::chrono::milliseconds>
+            (currentTime - lastEventTime).count() < 16) {
+            event->accept();
+            return;
+        }
+        lastEventTime = currentTime;
+
+        rangeUpdate();
+        if (rubberBandItem) {
+            // -----------------
+            if (toggleState) {
+                emit hideWhenMove();
+            }
+            // -----------------
+            // Set the area to zoom
+            QRectF rubberBandRect(rubberBandStartPos, event->pos());
+            rubberBandRect = rubberBandRect.normalized();
+            rubberBandItem->setRect(rubberBandRect);
+        }
+
+        if (event->buttons() & Qt::RightButton) {
+            qreal deltaX = -(event->pos().x() - lastMousePos.x());
+            qreal deltaY = (event->pos().y() - lastMousePos.y());
+            constexpr qreal sensitivity = 0.8; // Panning sensitivity factor
+            deltaX *= sensitivity;
+            deltaY *= sensitivity;
+
+            if (std::signbit(deltaX)) {
+                if (xMin <= minX) {
+                    deltaX = 0.00;
+                }
+            }
+            if (!std::signbit(deltaX)) {
+                if (xMax >= maxX) {
+                    deltaX = 0.00;
+                }
+            }
+
+            if (std::signbit(deltaY)) {
+                if (yMin <= minY) {
+                    deltaY = 0.00;
+                }
+            }
+            if (!std::signbit(deltaY)) {
+                if (yMax >= maxY) {
+                    deltaY = 0.00;
+                }
+            }
+            chart()->scroll(deltaX, deltaY);
+            event->accept();
+        }
+
+        lastMousePos = event->pos();
+
+        const QPointF mousePos = mapToScene(event->pos());
+        // Mouse position as emitted signal
+        QVector<qreal> limits{xMin, xMax, yMin, yMax};
+        if (!rubberBandItem) {
+            emit mouseMoved(mousePos, event, limits);
+        }
     }
 }
 
