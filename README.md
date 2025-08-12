@@ -50,7 +50,7 @@ Features implemented by overridden event handlers for mouse and keyboard inputs 
 `Functionalities:`
 
 - Wheel zoom focusing on cursor position, enhancing data's on focus experience.
-- Support for horizontal panning by x-axis range adjustment (axis clipping)
+- Support for horizontal and vertical panning by axis range adjustment (axis clipping)
 - Handles double-click events to fit the chart within the view, according to the original axes range.
 - Zoom-in by drag/selection rubber band area.
 - Handles mouse press events to dragging and panning (warning, inverted mouse buttons).
