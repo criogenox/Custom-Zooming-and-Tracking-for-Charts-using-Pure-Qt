@@ -120,7 +120,7 @@ Features implemented by overridden event handlers for mouse and keyboard inputs 
 <!-- LICENSE -->
 ## License
 
-Distributed under the MIT License. See [LICENSE.txt][license-url] for more information.
+Distributed under the GPL-3.0 License. See [LICENSE.txt][license-url] for more information.
 
 <!-- MARKDOWN LINKS & IMAGES -->
 [linkedin-shield]: https://user-images.githubusercontent.com/53323058/230575198-fa1acbf4-8f82-4d8e-b245-3979276bc240.png
@@ -128,4 +128,4 @@ Distributed under the MIT License. See [LICENSE.txt][license-url] for more infor
 [eqsreadme-url]: https://github.com/criogenox/E-Symbolic-Railway-Dynamics-Formulation/tree/master/eqs2latex
 [eqssrc-url]: https://github.com/criogenox/E-Symbolic-Railway-Dynamics-Formulation/tree/master/eqs2latex/src
 [ginac-url]: https://www.ginac.de/
-[license-url]: https://github.com/criogenox/All-in-one-Zoom-and-Tracking-for-Qt-Charts/tree/master?tab=MIT-1-ov-file
+[license-url]: https://github.com/criogenox/Custom-Zooming-and-Tracking-for-Charts-using-Pure-Qt?tab=GPL-3.0-1-ov-file
