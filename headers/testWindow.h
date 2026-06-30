@@ -1,6 +1,3 @@
-#ifndef TESTWINDOW_H
-#define TESTWINDOW_H
-
 #pragma once
 
 #include <QMainWindow>
@@ -13,5 +10,3 @@ public:
 
     ~testWindow() override = default;
 };
-
-#endif // TESTWINDOW_H

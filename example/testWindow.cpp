@@ -1,6 +1,6 @@
-#include <QVBoxLayout>
 #include "testWindow.h"
 #include "customEvents.h"
+#include <QValueAxis>
 
 testWindow::testWindow(QWidget *parent)
     : QMainWindow(parent) {
@@ -12,25 +12,14 @@ testWindow::testWindow(QWidget *parent)
     auto *series2 = new ScatterSeries(chartView);
     auto *series3 = new SplineSeries(chartView);
     //*******************************************
-    int maxPoints = 1000;
-    //  Series of random data
-    for (int i = -500; i < maxPoints; ++i) {
-        qreal yValue = rand() % 6;
-        qreal j = 2 * i;
-        qreal _yValue = 0.9 * yValue;
-        series1->append(j, _yValue);
-    }
-    for (int i = -500; i < maxPoints; ++i) {
-        qreal yValue = rand() % 4 + 15;
-        qreal j = 2 * i;
-        qreal _yValue = 0.7 * yValue;
-        series2->append(j, _yValue);
-    }
-    for (int i = -500; i < maxPoints; ++i) {
-        qreal yValue = rand() % 8 + 30;
-        qreal j = 2 * i;
-        qreal _yValue = 0.7 * yValue;
-        series3->append(j, _yValue);
+
+    // Dense, steady plot
+    constexpr int maxPoints = 10000;
+    for (int i = -10000; i < maxPoints; ++i) {
+        qreal j = i * 0.1;
+        series1->append(j, -1 * sin(j) * 5);
+        series2->append(j, cos(j) * 3 + 20);
+        series3->append(j, sin(j * 0.5) * 4 + 30);
     }
     chart->addSeries(series1);
     chart->addSeries(series2);
@@ -89,7 +78,8 @@ testWindow::testWindow(QWidget *parent)
                 axis->setGridLinePen(axisColor);
                 // Setting axes ranges
                 if (orientation == Qt::Horizontal) {
-                    axis->setRange(chartView->minX, chartView->maxX);
+                    qreal xRange = chartView->maxX - chartView->minX;
+                    axis->setRange(chartView->minX, chartView->minX + xRange);
                 } else if (orientation == Qt::Vertical) {
                     axis->setRange(chartView->minY, chartView->maxY);
                 }
@@ -97,9 +87,11 @@ testWindow::testWindow(QWidget *parent)
             }
         }
     }
+    chartView->rangeUpdate();
 
     chart->setTitle("Data Spectrum Analysis  (mock testing example)");
     chart->setTitleFont(QFont("Arial", 14, QFont::Bold));
+
     // Background color gradient
     QLinearGradient gradient(0, 0, 0, 700);
     gradient.setColorAt(0, QColor(255, 255, 255));
@@ -109,18 +101,6 @@ testWindow::testWindow(QWidget *parent)
     chart->legend()->setVisible(true);
     chart->legend()->setAlignment(Qt::AlignTop);
     chart->legend()->setFont(QFont("Arial", 10));
-    // chart->setAnimationOptions(QChart::AllAnimations);
 
-    //#######################
-
-    //// Set up layout for multi chart views
-    // auto *layout= new QVBoxLayout();
-    // layout->addWidget(chartView0);
-    // layout->addWidget(chartView1);
-    // auto *central_widget = new QWidget(this);
-    // central_widget->setLayout(layout);
-
-    //#######################
-
-    setCentralWidget(chartView); // or use central_widget
+    setCentralWidget(chartView);
 }

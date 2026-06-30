@@ -1,5 +1,3 @@
-#ifndef CUSTOMEVENTS_H
-#define CUSTOMEVENTS_H
 #pragma once
 
 /*
@@ -21,7 +19,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <QtTypes>
+#include <chrono>
+#include <functional>
 #include <QGraphicsDropShadowEffect>
 #include <QLabel>
 #include <QSplineSeries>
@@ -29,8 +28,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <QTimer>
 #include <QToolTip>
 #include <QtCharts/QChartView>
-#include <QtCharts/QValueAxis>
 #include <QXYSeries>
+#include <QFutureWatcher>
+
+struct TrackResult {
+    qreal distance{};
+    QPointF pos;
+    QPointF IPpixel;
+    bool isValid = false;
+};
 
 class ZoomAndScroll final : public QChartView {
     Q_OBJECT
@@ -38,27 +44,24 @@ class ZoomAndScroll final : public QChartView {
 public:
     explicit ZoomAndScroll(QChart *chart, QWidget *parent = nullptr);
 
+    // Batched, single-task tracking pipeline.
+    // Worker-thread compute callback.
+    // GUI-thread render callback.
+    using TrackPrepareFn = std::function<void()>;
+    using TrackComputeFn = std::function<TrackResult(const QPointF &, const QPointF &,
+                                                     const QVector<qreal> &, bool)>;
+    using TrackRenderFn = std::function<void(const TrackResult &)>;
+
+    void registerTracker(TrackPrepareFn prepare, TrackComputeFn compute, TrackRenderFn render);
+
 signals:
     void mouseMoved(QPointF mousePos,
                     QMouseEvent *event,
-                    QVector<qreal> &limits);
+                    const QVector<qreal> &limits);
 
     void hideWhenMove();
 
-private:
-    bool resizeHorZoom;
-    bool resizeVerZoom;
-    QPoint lastMousePos;
-    QPoint rubberBandStartPos;
-    QScopedPointer<QGraphicsRectItem> rubberBandItem;
-    qreal xMin{}, xMax{}, yMin{}, yMax{};
-    QVector<qreal> limits{};
-
-    struct SeriesIntersection {
-        QXYSeries *series{};
-        QPointF point;
-    };
-
+protected:
     void mousePressEvent(QMouseEvent *event) override;
 
     void mouseMoveEvent(QMouseEvent *event) override;
@@ -71,13 +74,27 @@ private:
 
     void keyPressEvent(QKeyEvent *event) override;
 
+private:
+    bool resizeHorZoom;
+    bool resizeVerZoom;
+    QPoint lastMousePos;
+    QPoint rubberBandStartPos;
+    std::chrono::steady_clock::time_point lastEventTime{std::chrono::steady_clock::now()};
+    QScopedPointer<QGraphicsRectItem> rubberBandItem;
+    QVector<qreal> limits{};
+
+    struct SeriesIntersection {
+        QXYSeries *series{};
+        QPointF point;
+    };
+
     void clearRubberBand();
 
     void resetChartToOriginal() const;
 
+public:
     void rangeUpdate();
 
-public:
     bool toggleState;
     bool toggleFocus;
     bool toggleLines;
@@ -85,6 +102,10 @@ public:
     qreal maxX{};
     qreal minY{};
     qreal maxY{};
+    qreal xMin{};
+    qreal xMax{};
+    qreal yMin{};
+    qreal yMax{};
 
     void updateXLimits(const QChart *chart);
 
@@ -93,6 +114,17 @@ public:
     [[nodiscard]] QXYSeries *findBottomSeries() const;
 
     QList<SeriesIntersection> currentIntersections;
+
+private:
+    QList<TrackPrepareFn> m_prepareFns;
+    QList<TrackComputeFn> m_computeFns;
+    QList<TrackRenderFn> m_renderFns;
+    QFutureWatcher<QList<TrackResult> > *m_batchWatcher{};
+
+    void runBatchTracking(const QPointF &chartPos, const QPointF &mousePos,
+                          const QVector<qreal> &limits, bool focusEnabled);
+
+    void onBatchFinished();
 };
 
 class LineSeries;
@@ -116,8 +148,13 @@ protected:
     struct Intercerp {
         qreal distance{};
         QPointF pos;
+        QPointF IPpixel;
+        bool isValid = false;
     };
 
+    int m_tooltipTimeout = 1000;
+
+    QList<QPointF> m_points;
     QTimer *tooltipTimer{};
     QGraphicsEllipseItem *bullet;
     QList<QLabel *> toolTips;
@@ -130,17 +167,20 @@ protected:
                                        const QPointF &lineStart,
                                        const QPointF &lineEnd);
 
-    virtual QList<Intercerp> findIntersection(const QPointF &mouse);
+    virtual Intercerp findIntersection(const QList<QPointF> &points, bool focusEnabled,
+                                       const QPointF &chartPos, const QPointF &mousePos,
+                                       const QVector<qreal> &limits);
+
+    void renderTracking(const TrackResult &result);
+
+    void registerBatchTracking();
 
     void handleTooltipOnFocus(const QPointF &chartPos, const QMouseEvent *event);
-
-    void handleTooltipForTracking(
-        const QPointF &chartPos, const QPointF &mousePos, QVector<qreal> &limits);
 
     void createLines(int n);
 
     void updateVerticalLine(
-        const QPointF &mousePos, const QPointF &IPpixel, QVector<qreal> &limits);
+        const QPointF &mousePos, const QPointF &IPpixel, const QVector<qreal> &limits);
 
     void setTooltips(const QPointF &intersectionPoint, const QPointF &IPpixel);
 
@@ -165,7 +205,7 @@ public slots:
 private slots:
     void onMouseMoved(QPointF mousePos,
                       const QMouseEvent *event,
-                      QVector<qreal> &limits);
+                      const QVector<qreal> &limits);
 
 private:
     ZoomAndScroll *m_chartView;
@@ -183,7 +223,7 @@ public slots:
 private slots:
     void onMouseMoved(QPointF mousePos,
                       const QMouseEvent *event,
-                      QVector<qreal> &limits);
+                      const QVector<qreal> &limits);
 
 private:
     ZoomAndScroll *m_chartView;
@@ -201,12 +241,15 @@ public slots:
 private slots:
     void onMouseMoved(QPointF mousePos,
                       const QMouseEvent *event,
-                      QVector<qreal> &limits);
+                      const QVector<qreal> &limits);
+
+protected:
+    Intercerp findIntersection(const QList<QPointF> &points, bool focusEnabled,
+                               const QPointF &chartPos, const QPointF &mousePos,
+                               const QVector<qreal> &limits) override;
 
 private:
     ZoomAndScroll *m_chartView;
-
-    QList<Intercerp> findIntersection(const QPointF &mouse) override;
 
     static constexpr qreal T = 1; // Catmull-Rom tension parameter
 
@@ -229,4 +272,3 @@ private:
         };
     }
 };
-#endif
