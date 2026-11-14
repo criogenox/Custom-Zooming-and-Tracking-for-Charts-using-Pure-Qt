@@ -3,7 +3,7 @@
 <!-- PROJECT LOGO -->
 <div align="center">
   <a align="center">
-    <img src="https://github.com/criogenox/All-in-one-Zoom-and-Tracking-for-Qt-Charts/assets/53323058/abbacd5d-0411-4a9a-8d4f-3605097c13bd.png" alt="Logo" width="500">
+    <img src="figures/repo_img.png" alt="Logo" width="500">
   </a>
   <h3 align="center">Simply focusing on data</h3>
   <p align="center">
@@ -29,10 +29,12 @@
   </p> 
    <div>
 
-##  General view sample
+##  General view samples and use cases
 
-| ![Image 1](https://github.com/criogenox/All-in-one-Zoom-and-Tracking-for-Qt-Charts/assets/53323058/38ad6ab9-0bbf-4378-9021-eb448f6c22d3.pn) | ![Image 2](https://github.com/criogenox/All-in-one-Zoom-and-Tracking-for-Qt-Charts/assets/53323058/8d1b4894-d7ce-4942-a7b2-20ba1b64cdca.png) |
-|:---:|:---:|
+| ![sample-1](figures/sample1.png)                  | ![sample-2](figures/sample2.png)           |
+|:--------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------:|
+|⬇⬇ **[Wheel/Rail Characterization][wrcc-url]** ⬇⬇|⬇⬇ **[Wheel/Rail Contact Libraries][contact-url]** ⬇⬇ |
+|![sample-3](figures/sample3.png)     |![sample-4](figures/sample4.png)        |
 
 ## Background & Details
 
@@ -94,9 +96,11 @@ Features implemented by overridden event handlers for mouse and keyboard inputs 
 ## Built With
 
 <div style="display: flex; flex-direction: column; align=center">
-    <img class="img"src="https://github.com/criogenox/B_ECC-Cpp-version_plot-capabilities_noGUI/assets/53323058/1fdf2d22-fb04-45aa-9db0-8bd973942914.png" alt="Logo" width="90" height="80"/>
-    <img class="img"src="https://github.com/criogenox/B_ECC-Cpp-version_plot-capabilities_noGUI/assets/53323058/6870b0b2-403c-49da-b745-5714b08f4a73.png" alt="Logo" width="90" height="80"/>
-    <img class="img"src="https://github.com/criogenox/B_ECC-Cpp-version_plot-capabilities_noGUI/assets/53323058/781b169a-440c-4c8a-9fbb-caa5ce150d13.png" alt="Logo" width="90" height="85"/>
+    <img class="img" src="figures/Cpp_logo.png" alt="C++" width="90" height="80"/>
+    <img class="img" src="figures/CMake_logo.png" alt="CMake" width="90" height="80"/>
+    <img class="img" src="figures/Qt_logo.png" alt="CMake" width="100" height="100"/>
+    <img class="img" src="figures/CLion_logo.png" alt="CLion" width="90" height="90"/>
+</div>
 
 ### Additional info
 
@@ -123,9 +127,8 @@ Features implemented by overridden event handlers for mouse and keyboard inputs 
 Distributed under the GPL-3.0 License. See [LICENSE.txt][license-url] for more information.
 
 <!-- MARKDOWN LINKS & IMAGES -->
-[linkedin-shield]: https://user-images.githubusercontent.com/53323058/230575198-fa1acbf4-8f82-4d8e-b245-3979276bc240.png
+[linkedin-shield]: figures/LinkedIn_logo_small.png
 [linkedin-url]: https://www.linkedin.com/in/criogenox/
-[eqsreadme-url]: https://github.com/criogenox/E-Symbolic-Railway-Dynamics-Formulation/tree/master/eqs2latex
-[eqssrc-url]: https://github.com/criogenox/E-Symbolic-Railway-Dynamics-Formulation/tree/master/eqs2latex/src
-[ginac-url]: https://www.ginac.de/
+[wrcc-url]: https://github.com/criogenox/A_WRCC-Cpp-Wheel-Rail-Contact-Characterization
+[contact-url]: https://github.com/criogenox/C_Normal_Tangential_Railway_Contact
 [license-url]: https://github.com/criogenox/Custom-Zooming-and-Tracking-for-Charts-using-Pure-Qt?tab=GPL-3.0-1-ov-file
