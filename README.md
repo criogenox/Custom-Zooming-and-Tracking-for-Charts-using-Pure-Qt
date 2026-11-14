@@ -33,7 +33,7 @@
 
 | ![sample-1](figures/sample1.png)                  | ![sample-2](figures/sample2.png)           |
 |:--------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------:|
-|⬇⬇ **[Wheel/Rail Characterization][wrcc-url]** ⬇⬇|⬇⬇ **[Wheel/Rail Contact Libraries][contact-url]** ⬇⬇ |
+|⬇⬇ **[Wheel/Rail&nbsp;Characterization][wrcc-url]** ⬇⬇|⬇⬇ **[Wheel/Rail&nbsp;Contact&nbsp;Libraries][contact-url]** ⬇⬇ |
 |![sample-3](figures/sample3.png)     |![sample-4](figures/sample4.png)        |
 
 ## Background & Details
