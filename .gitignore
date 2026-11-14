@@ -12,6 +12,8 @@ cmake-build-release/
 cmake-build-minisizerel/
 cmake-build-debug/
 .idea
+.git
+.gitignore
 
 # Compiled Object files
 *.slo
@@ -48,6 +50,5 @@ cmake-build-debug/
 *.asc
 
 #Images
-*.png
 *.jpeg
 *.jpg
