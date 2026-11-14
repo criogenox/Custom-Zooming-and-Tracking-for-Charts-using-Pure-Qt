@@ -104,7 +104,7 @@ Features implemented by overridden event handlers for mouse and keyboard inputs 
 
 ### Additional info
 
-- Tested on Windows 11, Ubuntu 22 & 24 using Qt6.7.2
+- Tested on Windows 11, Ubuntu 22 & 24 using Qt6.10.3
   
 - Extensive checking of instance deletion to ensure proper and effective resource management, preventing memory leaks.
   
