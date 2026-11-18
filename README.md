@@ -1,6 +1,7 @@
 [![LinkedIn][linkedin-shield]][linkedin-url]
 
 <!-- PROJECT LOGO -->
+
 <div align="center">
   <a align="center">
     <img src="figures/repo_img.png" alt="Logo" width="500">
@@ -15,26 +16,27 @@
 
 <div align="justify">
   <p>
-  
+
 > While trying to create and manipulate Qt charts for another project, I realized that the functionalities I needed do not exist freely as I would like it to work. So I started making and testing some code until everything was transformed into this repository. As simple as that, and perhaps it could be helpful for another soul.
 
 `Key Features:`
 
 - Complete chart zooming and scrolling capabilities. 
+
 - Label-tracking functionalities for individual series.
   
-   </p>
+  </p>
        <p align="right">
     :muscle: don't let anyone get you down :muscle:
   </p> 
    <div>
 
-##  General view samples and use cases
+## General view samples and use cases
 
-| ![sample-1](figures/sample1.png)                  | ![sample-2](figures/sample2.png)           |
-|:--------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------:|
-|⬇⬇ **[Wheel/Rail&nbsp;Characterization][wrcc-url]** ⬇⬇|⬇⬇ **[Wheel/Rail&nbsp;Contact&nbsp;Libraries][contact-url]** ⬇⬇ |
-|![sample-3](figures/sample3.png)     |![sample-4](figures/sample4.png)        |
+| ![sample-1](figures/sample1.png)                       | ![sample-2](figures/sample2.png)                                |
+|:------------------------------------------------------:|:---------------------------------------------------------------:|
+| ⬇⬇ **[Wheel/Rail&nbsp;Characterization][wrcc-url]** ⬇⬇ | ⬇⬇ **[Wheel/Rail&nbsp;Contact&nbsp;Libraries][contact-url]** ⬇⬇ |
+| ![sample-3](figures/sample3.png)                       | ![sample-4](figures/sample4.png)                                |
 
 ## Background & Details
 
@@ -52,16 +54,19 @@ Features implemented by overridden event handlers for mouse and keyboard inputs 
 `Functionalities:`
 
 - Wheel zoom focusing on cursor position, enhancing data's on focus experience.
+
 - Support for horizontal and vertical panning by axis range adjustment (axis clipping)
+
 - Handles double-click events to fit the chart within the view, according to the original axes range.
+
 - Zoom-in by drag/selection rubber band area.
+
 - Handles mouse press events to dragging and panning (warning, inverted mouse buttons).
+
 - Restricted zoom limits/range preventing excessive zooming far beyond the available data range.
- 
+  
   </p>
    <div>
-
-<p align="right">(<a href="#top">back to top</a>)</p>
 
 ### Tracking class
 
@@ -89,8 +94,8 @@ Features implemented by overridden event handlers for mouse and keyboard inputs 
 - Support for several Series' types ([see below](#in-depth-testing-roadmap))
 
 - Handles crosshair (continuous lines) and truncated track lines (visually emphasizing the intersection effect).
-
-   </p>
+  
+  </p>
    <div>
 
 ## Built With
@@ -105,28 +110,29 @@ Features implemented by overridden event handlers for mouse and keyboard inputs 
 ### Additional info
 
 - Tested on Windows 11, Ubuntu 22 & 24 using Qt6.10.3
-  
+
 - Extensive checking of instance deletion to ensure proper and effective resource management, preventing memory leaks.
-  
+
 - For a more in-depth understanding of the implemented method, as many comments as possible have been included.
 
 </div>
 
-<p align="right">(<a href="#top">back to top</a>)</p>
-
 <!-- ROADMAP -->
-## (In-depth) Testing Roadmap 
+
+## (In-depth) Testing Roadmap
 
 - [x] QLineSeries
-- [X] QScatterSeries
+- [x] QScatterSeries
 - [x] QSplineSeries
 
 <!-- LICENSE -->
+
 ## License
 
 Distributed under the GPL-3.0 License. See [LICENSE.txt][license-url] for more information.
 
 <!-- MARKDOWN LINKS & IMAGES -->
+
 [linkedin-shield]: figures/LinkedIn_logo_small.png
 [linkedin-url]: https://www.linkedin.com/in/criogenox/
 [wrcc-url]: https://github.com/criogenox/A_WRCC-Cpp-Wheel-Rail-Contact-Characterization
